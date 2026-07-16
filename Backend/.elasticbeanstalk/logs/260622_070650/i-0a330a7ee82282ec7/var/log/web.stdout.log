@@ -1,0 +1,211 @@
+Jun 17 14:06:51 ip-172-31-25-157 web[2026]: > backend@1.0.0 start
+Jun 17 14:06:51 ip-172-31-25-157 web[2026]: > node src/server.js
+Jun 17 14:06:52 ip-172-31-25-157 web[2040]: [dotenv@17.2.3] injecting env (4) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+Jun 17 14:06:52 ip-172-31-25-157 web[2040]: [Bill Cleanup Scheduler] Initialized - Running every 30 seconds
+Jun 17 14:06:52 ip-172-31-25-157 web[2040]: [Bill Cleanup Scheduler] Target ShopId: 695f967abb8a17fee63fdd39, Retention: 120000ms
+Jun 17 14:06:52 ip-172-31-25-157 web[2040]: Server is running on port 8080
+Jun 17 14:06:52 ip-172-31-25-157 web[2040]: Mongo DB connected: ac-auvzfns-shard-00-00.ht01ebo.mongodb.net
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]: Send OTP Error: TypeError: Cannot destructure property 'mobileNumber' of 'req.body' as it is undefined.
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]:    at sendOtp (file:///var/app/current/src/controllers/auth.controller.js:37:13)
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]:    at Layer.handleRequest (/var/app/current/node_modules/router/lib/layer.js:152:17)
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]:    at next (/var/app/current/node_modules/router/lib/route.js:157:13)
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]:    at Route.dispatch (/var/app/current/node_modules/router/lib/route.js:117:3)
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]:    at handle (/var/app/current/node_modules/router/index.js:435:11)
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]:    at Layer.handleRequest (/var/app/current/node_modules/router/lib/layer.js:152:17)
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]:    at /var/app/current/node_modules/router/index.js:295:15
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]:    at processParams (/var/app/current/node_modules/router/index.js:582:12)
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]:    at next (/var/app/current/node_modules/router/index.js:291:5)
+Jun 17 14:12:39 ip-172-31-25-157 web[2040]:    at Function.handle (/var/app/current/node_modules/router/index.js:186:3)
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]: Send OTP Error: TypeError: Cannot destructure property 'mobileNumber' of 'req.body' as it is undefined.
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]:    at sendOtp (file:///var/app/current/src/controllers/auth.controller.js:37:13)
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]:    at Layer.handleRequest (/var/app/current/node_modules/router/lib/layer.js:152:17)
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]:    at next (/var/app/current/node_modules/router/lib/route.js:157:13)
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]:    at Route.dispatch (/var/app/current/node_modules/router/lib/route.js:117:3)
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]:    at handle (/var/app/current/node_modules/router/index.js:435:11)
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]:    at Layer.handleRequest (/var/app/current/node_modules/router/lib/layer.js:152:17)
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]:    at /var/app/current/node_modules/router/index.js:295:15
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]:    at processParams (/var/app/current/node_modules/router/index.js:582:12)
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]:    at next (/var/app/current/node_modules/router/index.js:291:5)
+Jun 17 14:12:43 ip-172-31-25-157 web[2040]:    at Function.handle (/var/app/current/node_modules/router/index.js:186:3)
+Jun 17 14:31:00 ip-172-31-25-157 web[2040]: [Bill Cleanup Error]: read ECONNRESET
+Jun 17 16:59:30 ip-172-31-25-157 web[2040]: [Bill Cleanup] Deleted 1 old bills for shopId 695f967abb8a17fee63fdd39
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]: Send OTP Error: TypeError: Cannot destructure property 'mobileNumber' of 'req.body' as it is undefined.
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]:    at sendOtp (file:///var/app/current/src/controllers/auth.controller.js:37:13)
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]:    at Layer.handleRequest (/var/app/current/node_modules/router/lib/layer.js:152:17)
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]:    at next (/var/app/current/node_modules/router/lib/route.js:157:13)
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]:    at Route.dispatch (/var/app/current/node_modules/router/lib/route.js:117:3)
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]:    at handle (/var/app/current/node_modules/router/index.js:435:11)
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]:    at Layer.handleRequest (/var/app/current/node_modules/router/lib/layer.js:152:17)
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]:    at /var/app/current/node_modules/router/index.js:295:15
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]:    at processParams (/var/app/current/node_modules/router/index.js:582:12)
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]:    at next (/var/app/current/node_modules/router/index.js:291:5)
+Jun 18 18:02:29 ip-172-31-25-157 web[2040]:    at Function.handle (/var/app/current/node_modules/router/index.js:186:3)
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]: Send OTP Error: TypeError: Cannot destructure property 'mobileNumber' of 'req.body' as it is undefined.
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]:    at sendOtp (file:///var/app/current/src/controllers/auth.controller.js:37:13)
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]:    at Layer.handleRequest (/var/app/current/node_modules/router/lib/layer.js:152:17)
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]:    at next (/var/app/current/node_modules/router/lib/route.js:157:13)
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]:    at Route.dispatch (/var/app/current/node_modules/router/lib/route.js:117:3)
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]:    at handle (/var/app/current/node_modules/router/index.js:435:11)
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]:    at Layer.handleRequest (/var/app/current/node_modules/router/lib/layer.js:152:17)
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]:    at /var/app/current/node_modules/router/index.js:295:15
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]:    at processParams (/var/app/current/node_modules/router/index.js:582:12)
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]:    at next (/var/app/current/node_modules/router/index.js:291:5)
+Jun 18 18:02:38 ip-172-31-25-157 web[2040]:    at Function.handle (/var/app/current/node_modules/router/index.js:186:3)
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]: Send OTP Error: TypeError: Cannot destructure property 'mobileNumber' of 'req.body' as it is undefined.
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]:    at sendOtp (file:///var/app/current/src/controllers/auth.controller.js:37:13)
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]:    at Layer.handleRequest (/var/app/current/node_modules/router/lib/layer.js:152:17)
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]:    at next (/var/app/current/node_modules/router/lib/route.js:157:13)
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]:    at Route.dispatch (/var/app/current/node_modules/router/lib/route.js:117:3)
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]:    at handle (/var/app/current/node_modules/router/index.js:435:11)
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]:    at Layer.handleRequest (/var/app/current/node_modules/router/lib/layer.js:152:17)
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]:    at /var/app/current/node_modules/router/index.js:295:15
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]:    at processParams (/var/app/current/node_modules/router/index.js:582:12)
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]:    at next (/var/app/current/node_modules/router/index.js:291:5)
+Jun 18 18:03:02 ip-172-31-25-157 web[2040]:    at Function.handle (/var/app/current/node_modules/router/index.js:186:3)
+Jun 19 20:05:31 ip-172-31-25-157 web[107422]: > backend@1.0.0 start
+Jun 19 20:05:31 ip-172-31-25-157 web[107422]: > node src/server.js
+Jun 19 20:05:31 ip-172-31-25-157 web[107436]: [dotenv@17.2.3] injecting env (4) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+Jun 19 20:05:31 ip-172-31-25-157 web[107436]: [Bill Cleanup Scheduler] Initialized - Running every 30 seconds
+Jun 19 20:05:31 ip-172-31-25-157 web[107436]: [Bill Cleanup Scheduler] Target ShopId: 695f967abb8a17fee63fdd39, Retention: 120000ms
+Jun 19 20:05:31 ip-172-31-25-157 web[107436]: Server is running on port 8080
+Jun 19 20:05:32 ip-172-31-25-157 web[107436]: Mongo DB connected: ac-auvzfns-shard-00-01.ht01ebo.mongodb.net
+Jun 22 01:05:56 ip-172-31-25-157 web[210987]: > backend@1.0.0 start
+Jun 22 01:05:56 ip-172-31-25-157 web[210987]: > node src/server.js
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]: /var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:            throw new error_1.FirebaseAppError(error_1.AppErrorCodes.INVALID_CREDENTIAL, errorMessage);
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:                  ^
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]: FirebaseAppError: Service account object must contain a string "project_id" property.
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:    at new ServiceAccount (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145:19)
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:    at new ServiceAccountCredential (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:70:15)
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:    at Object.cert (/var/app/current/node_modules/firebase-admin/lib/app/credential-factory.js:103:54)
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:    at file:///var/app/current/src/lib/firebaseAdmin.js:9:34
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:  errorInfo: {
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:    code: 'app/invalid-credential',
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:    message: 'Service account object must contain a string "project_id" property.'
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:  },
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]:  codePrefix: 'app'
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]: }
+Jun 22 01:05:57 ip-172-31-25-157 web[211001]: Node.js v22.22.3
+Jun 22 01:05:58 ip-172-31-25-157 web[211009]: > backend@1.0.0 start
+Jun 22 01:05:58 ip-172-31-25-157 web[211009]: > node src/server.js
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]: /var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:            throw new error_1.FirebaseAppError(error_1.AppErrorCodes.INVALID_CREDENTIAL, errorMessage);
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:                  ^
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]: FirebaseAppError: Service account object must contain a string "project_id" property.
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:    at new ServiceAccount (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145:19)
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:    at new ServiceAccountCredential (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:70:15)
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:    at Object.cert (/var/app/current/node_modules/firebase-admin/lib/app/credential-factory.js:103:54)
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:    at file:///var/app/current/src/lib/firebaseAdmin.js:9:34
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:  errorInfo: {
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:    code: 'app/invalid-credential',
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:    message: 'Service account object must contain a string "project_id" property.'
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:  },
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]:  codePrefix: 'app'
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]: }
+Jun 22 01:05:59 ip-172-31-25-157 web[211023]: Node.js v22.22.3
+Jun 22 01:05:59 ip-172-31-25-157 web[211082]: > backend@1.0.0 start
+Jun 22 01:05:59 ip-172-31-25-157 web[211082]: > node src/server.js
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]: /var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:            throw new error_1.FirebaseAppError(error_1.AppErrorCodes.INVALID_CREDENTIAL, errorMessage);
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:                  ^
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]: FirebaseAppError: Service account object must contain a string "project_id" property.
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:    at new ServiceAccount (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145:19)
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:    at new ServiceAccountCredential (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:70:15)
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:    at Object.cert (/var/app/current/node_modules/firebase-admin/lib/app/credential-factory.js:103:54)
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:    at file:///var/app/current/src/lib/firebaseAdmin.js:9:34
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:  errorInfo: {
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:    code: 'app/invalid-credential',
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:    message: 'Service account object must contain a string "project_id" property.'
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:  },
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]:  codePrefix: 'app'
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]: }
+Jun 22 01:06:00 ip-172-31-25-157 web[211096]: Node.js v22.22.3
+Jun 22 01:06:01 ip-172-31-25-157 web[211104]: > backend@1.0.0 start
+Jun 22 01:06:01 ip-172-31-25-157 web[211104]: > node src/server.js
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]: /var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:            throw new error_1.FirebaseAppError(error_1.AppErrorCodes.INVALID_CREDENTIAL, errorMessage);
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:                  ^
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]: FirebaseAppError: Service account object must contain a string "project_id" property.
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:    at new ServiceAccount (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145:19)
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:    at new ServiceAccountCredential (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:70:15)
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:    at Object.cert (/var/app/current/node_modules/firebase-admin/lib/app/credential-factory.js:103:54)
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:    at file:///var/app/current/src/lib/firebaseAdmin.js:9:34
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:  errorInfo: {
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:    code: 'app/invalid-credential',
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:    message: 'Service account object must contain a string "project_id" property.'
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:  },
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]:  codePrefix: 'app'
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]: }
+Jun 22 01:06:03 ip-172-31-25-157 web[211118]: Node.js v22.22.3
+Jun 22 01:06:03 ip-172-31-25-157 web[211132]: > backend@1.0.0 start
+Jun 22 01:06:03 ip-172-31-25-157 web[211132]: > node src/server.js
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]: /var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:            throw new error_1.FirebaseAppError(error_1.AppErrorCodes.INVALID_CREDENTIAL, errorMessage);
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:                  ^
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]: FirebaseAppError: Service account object must contain a string "project_id" property.
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:    at new ServiceAccount (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145:19)
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:    at new ServiceAccountCredential (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:70:15)
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:    at Object.cert (/var/app/current/node_modules/firebase-admin/lib/app/credential-factory.js:103:54)
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:    at file:///var/app/current/src/lib/firebaseAdmin.js:9:34
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:  errorInfo: {
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:    code: 'app/invalid-credential',
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:    message: 'Service account object must contain a string "project_id" property.'
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:  },
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]:  codePrefix: 'app'
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]: }
+Jun 22 01:06:04 ip-172-31-25-157 web[211146]: Node.js v22.22.3
+Jun 22 01:06:05 ip-172-31-25-157 web[211155]: > backend@1.0.0 start
+Jun 22 01:06:05 ip-172-31-25-157 web[211155]: > node src/server.js
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]: /var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:            throw new error_1.FirebaseAppError(error_1.AppErrorCodes.INVALID_CREDENTIAL, errorMessage);
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:                  ^
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]: FirebaseAppError: Service account object must contain a string "project_id" property.
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:    at new ServiceAccount (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145:19)
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:    at new ServiceAccountCredential (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:70:15)
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:    at Object.cert (/var/app/current/node_modules/firebase-admin/lib/app/credential-factory.js:103:54)
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:    at file:///var/app/current/src/lib/firebaseAdmin.js:9:34
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:  errorInfo: {
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:    code: 'app/invalid-credential',
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:    message: 'Service account object must contain a string "project_id" property.'
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:  },
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]:  codePrefix: 'app'
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]: }
+Jun 22 01:06:06 ip-172-31-25-157 web[211169]: Node.js v22.22.3
+Jun 22 01:06:06 ip-172-31-25-157 web[211177]: > backend@1.0.0 start
+Jun 22 01:06:06 ip-172-31-25-157 web[211177]: > node src/server.js
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]: /var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:            throw new error_1.FirebaseAppError(error_1.AppErrorCodes.INVALID_CREDENTIAL, errorMessage);
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:                  ^
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]: FirebaseAppError: Service account object must contain a string "project_id" property.
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:    at new ServiceAccount (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:145:19)
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:    at new ServiceAccountCredential (/var/app/current/node_modules/firebase-admin/lib/app/credential-internal.js:70:15)
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:    at Object.cert (/var/app/current/node_modules/firebase-admin/lib/app/credential-factory.js:103:54)
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:    at file:///var/app/current/src/lib/firebaseAdmin.js:9:34
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:  errorInfo: {
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:    code: 'app/invalid-credential',
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:    message: 'Service account object must contain a string "project_id" property.'
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:  },
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]:  codePrefix: 'app'
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]: }
+Jun 22 01:06:07 ip-172-31-25-157 web[211191]: Node.js v22.22.3
