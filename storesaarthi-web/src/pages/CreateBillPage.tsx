@@ -4,6 +4,7 @@ import { ApiError } from '../api/client'
 import { createBill } from '../api/bills'
 import { fetchCustomers } from '../api/customers'
 import { fetchProducts } from '../api/products'
+import { DashboardLayout } from '../components/dashboard/DashboardLayout'
 import type {
   CreateBillItem,
   Customer,
@@ -182,18 +183,17 @@ export function CreateBillPage() {
   }
 
   return (
-    <div className="dash">
-      <header className="dash__bar">
-        <Link to="/bills" className="dash__brand">
-          ← Bills
-        </Link>
-      </header>
-
+    <DashboardLayout>
       <main className="bills-main bills-main--create">
         <div className="bills-header">
           <div>
             <h1>New bill</h1>
             <p className="dash__sub">Pick products by name — no barcode needed</p>
+          </div>
+          <div className="db-topbar__right">
+            <Link to="/bills" className="db-topbar__cta" style={{ background: 'transparent', color: '#374151', border: '1px solid #e5e7eb' }}>
+              ← Bills
+            </Link>
           </div>
         </div>
 
@@ -412,6 +412,6 @@ export function CreateBillPage() {
           </form>
         )}
       </main>
-    </div>
+    </DashboardLayout>
   )
 }

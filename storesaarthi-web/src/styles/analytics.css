@@ -1,0 +1,675 @@
+/* —— Analytics —— */
+.an-main {
+  width: min(960px, 100%);
+  margin: 0 auto;
+  padding: 36px 24px 80px;
+}
+
+/* ── PIN gate ── */
+.an-pin-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.an-pin-card {
+  width: min(400px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 36px 32px;
+  display: grid;
+  gap: 12px;
+  text-align: center;
+  animation: rise 0.35s ease both;
+}
+
+.an-pin-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.an-pin-card h2 {
+  font-size: 1.4rem;
+}
+
+.an-pin-sub {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.an-pin-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.an-pin-input {
+  width: 100%;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 1.4rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  background: var(--paper);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.an-pin-input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(15, 107, 76, 0.15);
+}
+
+/* ── lock btn in header ── */
+.an-lock-btn {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.an-lock-btn:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* ── top-level tabs ── */
+.an-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+  padding: 5px;
+  background: var(--brand-soft);
+  border-radius: 12px;
+  width: fit-content;
+}
+
+.an-tab {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 9px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background 0.15s, color 0.15s;
+}
+
+.an-tab--active {
+  background: var(--panel);
+  color: var(--brand-deep);
+  box-shadow: 0 1px 4px rgba(20, 35, 28, 0.08);
+}
+
+/* ── range pills ── */
+.an-range-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+}
+
+.an-pill {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--panel);
+  color: var(--muted);
+  padding: 7px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.an-pill:hover {
+  border-color: var(--brand);
+  color: var(--brand-deep);
+}
+
+.an-pill--active {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff;
+}
+
+.an-date-label {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin: -10px 0 18px;
+}
+
+/* ── summary cards ── */
+.an-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+  animation: rise 0.4s ease both;
+}
+
+.an-card {
+  display: grid;
+  gap: 6px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.an-card--warn {
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--line));
+  background: color-mix(in srgb, #fff7f1 70%, var(--panel));
+}
+
+.an-card__label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.an-card__value {
+  font-family: var(--display);
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.an-card__value--brand {
+  color: var(--brand-deep);
+}
+
+.an-card__value--sm {
+  font-size: 1.1rem;
+  font-family: var(--sans);
+}
+
+.an-card__sub {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* payment split bar */
+.an-split-bar {
+  display: flex;
+  height: 5px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--paper);
+  gap: 2px;
+}
+
+.an-split-bar__cash {
+  background: var(--brand);
+  height: 100%;
+  transition: width 0.4s ease;
+  min-width: 2px;
+}
+
+.an-split-bar__upi {
+  background: var(--accent);
+  height: 100%;
+  transition: width 0.4s ease;
+  min-width: 2px;
+}
+
+/* ── section wrappers ── */
+.an-section {
+  margin-bottom: 28px;
+  animation: rise 0.45s ease 0.06s both;
+}
+
+.an-section__title {
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+  color: var(--ink);
+}
+
+/* ── top products ── */
+.an-product-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.an-product-row {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.an-product-row:hover {
+  border-color: color-mix(in srgb, var(--brand) 30%, var(--line));
+}
+
+.an-product-row__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 16px;
+}
+
+.an-product-row__info {
+  display: grid;
+  gap: 2px;
+}
+
+.an-product-row__name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.an-product-row__qty {
+  color: var(--muted);
+  font-size: 0.83rem;
+}
+
+.an-product-row__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.an-product-row__revenue {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.an-expand-btn {
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.an-expand-btn:hover {
+  background: var(--paper);
+}
+
+/* variant list (expanded) */
+.an-variant-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 16px 12px;
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.an-variant-row {
+  display: flex;
+  gap: 12px;
+  font-size: 0.87rem;
+  color: var(--muted);
+}
+
+.an-variant-row__name {
+  flex: 1;
+}
+
+.an-variant-row__qty {
+  min-width: 70px;
+}
+
+.an-variant-row__rev {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* ── trend list ── */
+.an-trend-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.an-trend-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font-size: 0.92rem;
+}
+
+.an-trend-row__label {
+  color: var(--muted);
+}
+
+.an-trend-row__value {
+  font-weight: 700;
+}
+
+/* ── biggest bill ── */
+.an-biggest-bill {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.an-biggest-bill__amount {
+  font-family: var(--display);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--brand-deep);
+}
+
+.an-biggest-bill__meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ── empty state ── */
+.an-empty {
+  color: var(--muted);
+  padding: 20px 0;
+}
+
+/* ── report controls ── */
+.an-report-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.an-report-select {
+  max-width: 220px;
+}
+
+/* ── grand total banner ── */
+.an-report-banner {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+  animation: rise 0.4s ease both;
+}
+
+.an-report-banner__cell {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.an-report-banner__label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.an-report-banner__value {
+  font-family: var(--display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+.an-report-banner__value--brand {
+  color: var(--brand-deep);
+}
+
+.an-report-meta {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin-bottom: 16px;
+}
+
+/* ── report table ── */
+.an-report-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  animation: rise 0.45s ease 0.06s both;
+}
+
+.an-report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.an-report-table th,
+.an-report-table td {
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.an-report-table th {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: var(--paper);
+}
+
+.an-report-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.an-report-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--brand-soft) 40%, transparent);
+}
+
+.an-report-table__num {
+  text-align: right !important;
+}
+
+.an-report-table__subtotal td {
+  font-weight: 700;
+  background: color-mix(in srgb, var(--brand-soft) 50%, var(--panel)) !important;
+  border-top: 1px solid color-mix(in srgb, var(--brand) 25%, var(--line));
+  color: var(--brand-deep);
+}
+
+/* ── PDF download button ── */
+.an-pdf-btn {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* hidden on screen, visible only when printing */
+.an-print-report {
+  display: none;
+}
+
+/* ── Print styles ── */
+@media print {
+  .an-main > *:not(.an-print-report),
+  .dash__bar {
+    display: none !important;
+  }
+
+  .an-main {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .an-print-report {
+    display: block !important;
+    font-family: 'Times New Roman', serif;
+    font-size: 10pt;
+    color: #000;
+    line-height: 1.4;
+  }
+
+  .an-print-report__header {
+    text-align: center;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+  }
+
+  .an-print-report__header h1 {
+    font-family: 'Times New Roman', serif;
+    font-size: 18pt;
+    font-weight: 700;
+    margin: 0 0 4px;
+    letter-spacing: 0;
+    color: #000;
+  }
+
+  .an-print-report__subtitle {
+    font-size: 13pt;
+    font-weight: 600;
+    margin: 2px 0;
+  }
+
+  .an-print-report__dates {
+    font-size: 10pt;
+    color: #444;
+    margin: 2px 0;
+  }
+
+  .an-print-report__summary {
+    margin: 14px 0;
+    border: 1px solid #bbb;
+    padding: 10px 14px;
+  }
+
+  .an-print-report__summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px 20px;
+  }
+
+  .an-print-report__summary-grid > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .an-print-report__summary-label {
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #555;
+  }
+
+  .an-print-report__summary-value {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #000;
+  }
+
+  .an-print-report__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9pt;
+    margin-top: 10px;
+  }
+
+  .an-print-report__table th,
+  .an-print-report__table td {
+    padding: 5px 7px;
+    border: 1px solid #bbb;
+    text-align: right;
+  }
+
+  .an-print-report__table th:first-child,
+  .an-print-report__table td:first-child {
+    text-align: left;
+  }
+
+  .an-print-report__table thead tr {
+    background: #eee;
+    font-weight: 700;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .an-print-report__table .an-print-report__subtotal td {
+    font-weight: 700;
+    background: #f5f5f5;
+    border-top: 2px solid #888;
+  }
+
+  .an-print-report__table tbody tr:nth-child(even):not(.an-print-report__subtotal) td {
+    background: #fafafa;
+  }
+
+  .an-print-report__footer {
+    margin-top: 16px;
+    text-align: center;
+    font-size: 8pt;
+    color: #777;
+    border-top: 1px solid #ccc;
+    padding-top: 8px;
+  }
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .an-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .an-report-banner {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .an-tabs {
+    width: 100%;
+  }
+
+  .an-tab {
+    flex: 1;
+    text-align: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .an-cards {
+    grid-template-columns: 1fr;
+  }
+}

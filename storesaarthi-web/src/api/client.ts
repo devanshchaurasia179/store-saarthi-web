@@ -23,6 +23,8 @@ export class ApiError extends Error {
   }
 }
 
+const BASE_URL = 'https://store-saathi-api.vercel.app'
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -38,7 +40,9 @@ export async function apiFetch<T>(
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const res = await fetch(path, {
+  const url = path.startsWith('http') ? path : `${BASE_URL}${path}`
+
+  const res = await fetch(url, {
     ...options,
     headers,
     credentials: 'include',

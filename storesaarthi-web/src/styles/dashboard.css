@@ -1,0 +1,745 @@
+/* ==========================================================================
+   Dashboard shell layout
+   .db-shell  = full-viewport flex row (sidebar + body)
+   .db-body   = scrollable main area, takes remaining width
+   ========================================================================== */
+
+.db-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.db-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* ==========================================================================
+   Collapsible dashboard sidebar
+   Two states, driven by the .db-sidebar--collapsed modifier class:
+     - expanded:  72px icon rail becomes a 232px rail with labels
+     - collapsed: icon-only rail, labels hidden, tooltips via title attr
+   ========================================================================== */
+
+.db-sidebar {
+  --db-sidebar-width-expanded: 232px;
+  --db-sidebar-width-collapsed: 76px;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: var(--db-sidebar-width-expanded);
+  height: 100vh;
+  padding: 20px 12px;
+  background: #ffffff;
+  border-right: 1px solid #ececec;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: width 220ms ease;
+}
+
+.db-sidebar--collapsed {
+  width: var(--db-sidebar-width-collapsed);
+}
+
+/* Toggle handle: small circular button riding the right edge */
+.db-sidebar__toggle {
+  position: absolute;
+  top: 28px;
+  right: -14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid #e6e6e6;
+  background: #ffffff;
+  color: #6b7280;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08);
+  transition: background 150ms ease, color 150ms ease, transform 150ms ease;
+}
+
+.db-sidebar__toggle:hover {
+  background: #f5f5f5;
+  color: #111827;
+}
+
+.db-sidebar__toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.db-sidebar__toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Brand / logo */
+.db-sidebar__brand {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px 20px;
+}
+
+.db-sidebar__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #111827;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.db-sidebar__logo svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Nav lists */
+.db-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.db-sidebar__nav--bottom {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* Nav item: icon + label row, collapses to icon-centered square */
+.db-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #4b5563;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.db-sidebar--collapsed .db-sidebar__item {
+  justify-content: center;
+  padding: 0;
+  width: 40px;
+}
+
+.db-sidebar__item:hover {
+  background: #f5f5f5;
+  color: #111827;
+}
+
+.db-sidebar__item--active {
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.db-sidebar__item--btn {
+  width: 100%;
+  font: inherit;
+}
+
+.db-sidebar__item--btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.db-sidebar__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.db-sidebar__icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Label fades and collapses out of flow when the rail shrinks */
+.db-sidebar__label {
+  opacity: 1;
+  transition: opacity 150ms ease;
+}
+
+.db-sidebar--collapsed .db-sidebar__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .db-sidebar,
+  .db-sidebar__toggle,
+  .db-sidebar__label {
+    transition: none;
+  }
+}
+
+/* ==========================================================================
+   Top bar
+   ========================================================================== */
+
+.db-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #ececec;
+  flex-shrink: 0;
+}
+
+.db-topbar__greeting {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.db-topbar__title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.db-topbar__sub {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.db-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.db-topbar__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 150ms ease;
+}
+
+.db-topbar__cta:hover {
+  background: #1f2937;
+}
+
+/* ==========================================================================
+   Content layout: two-column (main + right panel)
+   ========================================================================== */
+
+.db-content {
+  display: flex;
+  gap: 24px;
+  padding: 24px 28px;
+  align-items: flex-start;
+}
+
+.db-main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ==========================================================================
+   Stat cards
+   ========================================================================== */
+
+.db-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.db-stat {
+  background: #ffffff;
+  border: 1px solid #ececec;
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.db-stat__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.db-stat__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 16px;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.db-stat__more {
+  font-size: 16px;
+  color: #d1d5db;
+  letter-spacing: 2px;
+  cursor: default;
+}
+
+.db-stat__label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.db-stat__value {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.db-stat__delta {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.db-stat__delta--up {
+  color: #059669;
+}
+
+.db-stat__delta--down {
+  color: #dc2626;
+}
+
+/* ==========================================================================
+   Bar chart
+   ========================================================================== */
+
+.db-chart {
+  background: #ffffff;
+  border: 1px solid #ececec;
+  border-radius: 14px;
+  padding: 20px 24px;
+}
+
+.db-chart__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.db-chart__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.db-chart__total {
+  margin: 4px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.db-chart__link {
+  font-size: 13px;
+  font-weight: 500;
+  color: #3730a3;
+  text-decoration: none;
+  white-space: nowrap;
+  padding-top: 4px;
+}
+
+.db-chart__link:hover {
+  text-decoration: underline;
+}
+
+.db-chart__bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 140px;
+}
+
+.db-chart__col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex: 1;
+  height: 100%;
+  position: relative;
+}
+
+.db-chart__bar {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  background: #e0e7ff;
+  transition: height 400ms ease;
+}
+
+.db-chart__bar--active {
+  background: #3730a3;
+}
+
+.db-chart__bar--skeleton {
+  background: #f3f4f6;
+  animation: db-pulse 1.4s ease-in-out infinite;
+}
+
+.db-chart__x {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.db-chart__tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111827;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 7px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.db-chart__tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: #111827;
+}
+
+.db-chart__empty {
+  margin: 0;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: center;
+  padding: 32px 0;
+}
+
+/* ==========================================================================
+   Recent bills
+   ========================================================================== */
+
+.db-recent {
+  background: #ffffff;
+  border: 1px solid #ececec;
+  border-radius: 14px;
+  padding: 20px 24px;
+}
+
+.db-recent__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.db-recent__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.db-bill-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.db-bill-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 150ms ease;
+}
+
+.db-bill-row:hover {
+  background: #f9fafb;
+}
+
+.db-bill-row__icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.db-bill-row__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.db-bill-row__num {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.db-bill-row__time {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.db-bill-row__amt {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Right panel (Quick actions + Print Agent)
+   ========================================================================== */
+
+.db-panel {
+  width: 260px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border: 1px solid #ececec;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.db-panel__section {
+  padding: 20px 20px 16px;
+}
+
+.db-panel__heading {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.db-panel__hint {
+  margin: 0;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.db-panel__divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 0;
+}
+
+.db-panel__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.db-panel__action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  background: #f9fafb;
+  border: 1px solid #ececec;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.db-panel__action:hover {
+  background: #f0f0f0;
+  border-color: #d1d5db;
+}
+
+.db-panel__action--primary {
+  background: #111827;
+  color: #ffffff;
+  border-color: #111827;
+}
+
+.db-panel__action--primary:hover {
+  background: #1f2937;
+  border-color: #1f2937;
+}
+
+.db-panel__download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid #c7d2fe;
+  transition: background 150ms ease;
+}
+
+.db-panel__download:hover {
+  background: #e0e7ff;
+}
+
+.db-panel__download-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   Secret key banner
+   ========================================================================== */
+
+.dash__secret {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+  margin: 0 28px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 12px;
+}
+
+.dash__secret-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.dash__secret-body {
+  margin: 0;
+  font-size: 13px;
+  color: #b45309;
+}
+
+.dash__secret code {
+  display: block;
+  padding: 10px 12px;
+  background: #ffffff;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 13px;
+  color: #111827;
+  word-break: break-all;
+}
+
+/* ==========================================================================
+   Loading skeleton pulse
+   ========================================================================== */
+
+@keyframes db-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  .db-content {
+    flex-direction: column;
+    padding: 16px;
+  }
+
+  .db-panel {
+    width: 100%;
+  }
+
+  .db-topbar {
+    padding: 16px;
+  }
+
+  .db-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .db-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .db-topbar__cta {
+    display: none;
+  }
+}

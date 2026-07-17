@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { fetchBills } from '../api/bills'
+import { DashboardLayout } from '../components/dashboard/DashboardLayout'
 import type { Bill } from '../types/bill'
 
 function formatMoney(value: number) {
@@ -53,23 +54,17 @@ export function BillsPage() {
   }, [])
 
   return (
-    <div className="dash">
-      <header className="dash__bar">
-        <Link to="/" className="dash__brand">
-          StoreSaarthi
-        </Link>
-        <div className="dash__actions">
-          <Link to="/bills/new" className="auth-btn bills-btn">
-            New bill
-          </Link>
-        </div>
-      </header>
-
+    <DashboardLayout>
       <main className="bills-main">
         <div className="bills-header">
           <div>
             <h1>Bills</h1>
             <p className="dash__sub">All bills for your shop</p>
+          </div>
+          <div className="db-topbar__right">
+            <Link to="/bills/new" className="db-topbar__cta">
+              ✚ New Bill
+            </Link>
           </div>
         </div>
 
@@ -112,6 +107,6 @@ export function BillsPage() {
           </ul>
         )}
       </main>
-    </div>
+    </DashboardLayout>
   )
 }

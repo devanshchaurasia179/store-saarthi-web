@@ -4,6 +4,7 @@ import { ApiError } from '../api/client'
 import { fetchBillById } from '../api/bills'
 import { billToPrintPayload, printBill } from '../api/print'
 import { useAuth } from '../context/AuthContext'
+import { DashboardLayout } from '../components/dashboard/DashboardLayout'
 import type { Bill, BillCustomer } from '../types/bill'
 
 function formatMoney(value: number) {
@@ -108,18 +109,7 @@ export function BillDetailPage() {
   }
 
   return (
-    <div className="dash">
-      <header className="dash__bar no-print">
-        <Link to="/bills" className="dash__brand">
-          ← Bills
-        </Link>
-        <div className="dash__actions">
-          <Link to="/bills/new" className="auth-link">
-            New bill
-          </Link>
-        </div>
-      </header>
-
+    <DashboardLayout>
       <main className="bills-main">
         {loading && <p className="dash__hint no-print">Loading bill…</p>}
         {error && (
@@ -130,6 +120,7 @@ export function BillDetailPage() {
           <>
             <div className="bills-header no-print">
               <div>
+                <Link to="/bills" className="db-chart__link" style={{ display: 'inline-block', marginBottom: 6 }}>← Bills</Link>
                 <h1>Bill #{bill.dailyBillNumber}</h1>
                 <p className="dash__sub">{formatDate(bill.createdAt)}</p>
               </div>
@@ -300,6 +291,6 @@ export function BillDetailPage() {
           </>
         )}
       </main>
-    </div>
+    </DashboardLayout>
   )
 }
