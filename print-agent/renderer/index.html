@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Content Security Policy: allows only local resources -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>StoreSaarthi Print Agent</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <img src="../assets/logo.png" alt="StoreSaarthi" class="logo" onerror="this.style.display='none'" />
+    <div class="header-text">
+      <h1>StoreSaarthi</h1>
+      <p>Print Agent</p>
+    </div>
+  </header>
+
+  <!-- ── Status card ── -->
+  <section class="card" id="statusCard">
+    <div class="card-row">
+      <span class="label">Status</span>
+      <span class="status-badge" id="statusBadge">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Starting…</span>
+      </span>
+    </div>
+    <div class="card-row">
+      <span class="label">Server</span>
+      <span class="value mono" id="serverUrl">http://localhost:4000</span>
+    </div>
+    <div class="card-row">
+      <span class="label">Printer</span>
+      <span class="value" id="printerName">—</span>
+    </div>
+    <div class="card-row" id="printerStatusRow">
+      <span class="label">Printer Status</span>
+      <span class="value" id="printerStatus">—</span>
+    </div>
+  </section>
+
+  <!-- ── Stats card ── -->
+  <section class="card">
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-num" id="statSuccess">0</div>
+        <div class="stat-label">Successful</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num red" id="statFail">0</div>
+        <div class="stat-label">Failed</div>
+      </div>
+      <div class="stat-box wide">
+        <div class="stat-num small" id="statLastPrint">—</div>
+        <div class="stat-label">Last Print</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Actions ── -->
+  <section class="card">
+    <div class="actions">
+      <button class="btn btn-primary" id="btnChangePrinter">🖨 Change Printer</button>
+      <button class="btn btn-secondary" id="btnTestPrint">🖶 Test Print</button>
+    </div>
+    <div class="actions mt-sm">
+      <button class="btn btn-ghost" id="btnMinimize">⬇ Minimize to Tray</button>
+      <button class="btn btn-ghost" id="btnOpenLogs">📋 Open Logs</button>
+    </div>
+  </section>
+
+  <!-- ── Settings ── -->
+  <section class="card">
+    <label class="toggle-row">
+      <span class="label">Start with Windows</span>
+      <input type="checkbox" id="chkAutoStart" />
+      <span class="toggle-slider"></span>
+    </label>
+  </section>
+
+  <!-- ── Toast notification ── -->
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <!-- ── Printer selection modal ── -->
+  <div id="printerModal" class="modal-overlay" hidden>
+    <div class="modal">
+      <h2>Select Printer</h2>
+      <p class="modal-sub">Choose the thermal printer for billing receipts.</p>
+      <div id="printerList" class="printer-list">
+        <div class="loading-spinner"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btnModalCancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

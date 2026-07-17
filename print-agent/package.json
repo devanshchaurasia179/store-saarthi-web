@@ -1,13 +1,88 @@
 {
-  "name": "print-agent",
-  "version": "1.0.0",
-  "description": "Local print agent for Windows thermal printer via HTTP",
-  "main": "index.js",
+  "name": "store-saarthi-print-agent",
+  "version": "2.0.0",
+  "description": "StoreSaarthi Print Agent – Windows thermal printer service. Runs as a standalone exe (pkg) or Electron app.",
+  "author": "StoreSaarthi",
+  "main": "main.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "server": "node index.js",
+    "build": "pkg index.js --config package.json --output dist/print-agent.exe",
+    "dist": "electron-builder --win --x64",
+    "dist:dir": "electron-builder --win --x64 --dir"
   },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "electron": "^29.1.0",
+    "electron-builder": "^24.13.3",
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "targets": [
+      "node18-win-x64"
+    ],
+    "assets": [
+      "server/textGenerator.js"
+    ],
+    "scripts": [
+      "server/textGenerator.js"
+    ],
+    "outputPath": "dist"
+  },
+  "build": {
+    "appId": "com.storesaarthi.printagent",
+    "productName": "StoreSaarthi Print Agent",
+    "copyright": "Copyright © 2026 StoreSaarthi",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico",
+      "signingHashAlgorithms": null,
+      "sign": null
+    },
+    "nsis": {
+      "artifactName": "StoreSaarthiPrintAgentSetup.exe",
+      "shortcutName": "StoreSaarthi Print Agent",
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "perMachine": false
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "server/**/*",
+      "config/**/*",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "asarUnpack": [
+      "server/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "config/",
+        "to": "config/",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "dist"
+    }
   }
 }

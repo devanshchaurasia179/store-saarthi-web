@@ -1,49 +1,221 @@
 /**
  * index.js
- * Print-agent HTTP server.
+ * StoreSaarthi Print Agent — standalone headless server.
  *
- * Strategy: build plain-text receipt → write temp .txt + .ps1 files
- *           → execute PowerShell script that uses .NET PrintDocument
- *           → zero margins, draws from X=5 so output is left-aligned
- *             on the 58 mm thermal roll.
+ * Packaged with `pkg` into a single Windows exe (dist/print-agent.exe).
+ * Can also be run directly with `node index.js` for development.
+ *
+ * Startup flow:
+ *  1. Locate config.json next to the running exe (or cwd in dev).
+ *  2. If config.json exists → load it and start the server.
+ *  3. If config.json is missing AND we have an interactive console (isTTY)
+ *     → run first-time setup: list printers, ask for selection, save config.
+ *  4. If config.json is missing AND no interactive console (running as a
+ *     headless Windows Service via NSSM) → write error log and exit(1).
  */
 
-const express  = require("express");
-const cors     = require("cors");
-const path     = require("path");
-const fs       = require("fs");
-const { exec } = require("child_process");
+"use strict";
 
-const config           = require("./config");
-const buildReceiptText = require("./utils/textGenerator");
+const express    = require("express");
+const cors       = require("cors");
+const path       = require("path");
+const fs         = require("fs");
+const readline   = require("readline");
+const { exec }   = require("child_process");
 
-// ─── App setup ────────────────────────────────────────────────────────────────
-const app = express();
-app.use(cors());
-app.use(express.json());
+// ─── Path resolution (works both in dev and when packaged with pkg) ───────────
+//
+// pkg bundles the source into a snapshot filesystem (e.g. C:\snapshot\...).
+// Writing config.json there would be lost on restart.  We must resolve paths
+// relative to the directory that contains the exe (process.execPath when
+// packaged, or process.cwd() in dev).
+//
+// process.pkg is set by pkg at runtime; we use it to detect packaged mode.
 
-app.use((_req, _res, next) => {
-  console.log(`[${new Date().toISOString()}] ${_req.method} ${_req.path}`);
-  next();
-});
+const IS_PKG = typeof process.pkg !== "undefined";
 
-const TEMP_DIR = path.join(__dirname, "temp");
-if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
-
-// ─── Build PowerShell script content ─────────────────────────────────────────
 /**
+ * Base directory: next to the exe when packaged, cwd when running via node.
+ */
+const BASE_DIR = IS_PKG
+  ? path.dirname(process.execPath)
+  : process.cwd();
+
+const CONFIG_FILE = path.join(BASE_DIR, "config.json");
+const LOGS_DIR    = path.join(BASE_DIR, "logs");
+const TEMP_DIR    = path.join(BASE_DIR, "temp");
+
+// ─── Ensure runtime directories exist ────────────────────────────────────────
+for (const dir of [LOGS_DIR, TEMP_DIR]) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+// ─── Simple logger ────────────────────────────────────────────────────────────
+/**
+ * Writes timestamped lines to both console and a rolling daily log file.
+ * NSSM redirects stdout/stderr to files, so console.log/error is sufficient
+ * for service logging — we just add structured prefixes for easy grepping.
+ */
+const logger = {
+  _write(level, msg) {
+    const ts   = new Date().toISOString();
+    const line = `[${ts}] [print-agent] [${level}] ${msg}`;
+    if (level === "ERROR") {
+      console.error(line);
+    } else {
+      console.log(line);
+    }
+    // Also write to a rolling daily file
+    try {
+      const today = new Date();
+      const name  = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}.log`;
+      fs.appendFileSync(path.join(LOGS_DIR, name), line + "\n", "utf8");
+    } catch {
+      // Best-effort — console already has the line
+    }
+  },
+  info  (msg) { this._write("INFO",  msg); },
+  warn  (msg) { this._write("WARN",  msg); },
+  error (msg) { this._write("ERROR", msg); },
+};
+
+// ─── Config helpers ───────────────────────────────────────────────────────────
+const CONFIG_DEFAULTS = { printerName: "", port: 4000 };
+
+/** Load config from disk. Returns defaults if file is missing or malformed. */
+function loadConfig() {
+  try {
+    if (!fs.existsSync(CONFIG_FILE)) return { ...CONFIG_DEFAULTS };
+    const raw = fs.readFileSync(CONFIG_FILE, "utf8");
+    return { ...CONFIG_DEFAULTS, ...JSON.parse(raw) };
+  } catch (err) {
+    logger.warn(`Could not parse config.json: ${err.message} — using defaults`);
+    return { ...CONFIG_DEFAULTS };
+  }
+}
+
+/** Persist a config object to disk. */
+function saveConfig(cfg) {
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(cfg, null, 2), "utf8");
+  logger.info(`config.json saved → printer="${cfg.printerName}" port=${cfg.port}`);
+}
+
+// In-memory config — updated by POST /config without restart
+let runtimeConfig = loadConfig();
+
+// ─── Windows printer enumeration ──────────────────────────────────────────────
+/**
+ * Lists installed Windows printers using PowerShell.
+ * Returns a Promise<string[]> (empty array on failure).
+ */
+function listPrinters() {
+  return new Promise((resolve) => {
+    const cmd = `powershell.exe -NoProfile -NonInteractive -Command "Get-Printer | Select-Object -ExpandProperty Name | ConvertTo-Json -Compress"`;
+    logger.info("Running: " + cmd);
+    exec(cmd, (err, stdout, stderr) => {
+      if (err) {
+        logger.error(`listPrinters error: ${stderr || err.message}`);
+        return resolve([]);
+      }
+      try {
+        const raw = stdout.trim();
+        if (!raw) return resolve([]);
+        const parsed = JSON.parse(raw);
+        // PowerShell returns a bare string (not array) when there's exactly one printer
+        const printers = Array.isArray(parsed) ? parsed : [parsed];
+        resolve(printers.filter(Boolean));
+      } catch (parseErr) {
+        logger.error(`listPrinters parse error: ${parseErr.message}`);
+        resolve([]);
+      }
+    });
+  });
+}
+
+// ─── First-run interactive setup ──────────────────────────────────────────────
+/**
+ * Prompts the user to select a printer from the installed list.
+ * Saves the selection to config.json and resolves when done.
+ * Only called when process.stdin.isTTY === true.
+ *
+ * @returns {Promise<void>}
+ */
+async function runFirstTimeSetup() {
+  console.log("\n[print-agent] ── FIRST-TIME SETUP ──────────────────────────");
+  console.log("[print-agent] config.json not found. Let's set it up.");
+  console.log("[print-agent] Detecting installed printers...\n");
+
+  const printers = await listPrinters();
+
+  if (printers.length === 0) {
+    console.error("[print-agent] ERROR: No printers found via PowerShell.");
+    console.error("[print-agent] Make sure your thermal printer is installed in Windows");
+    console.error("[print-agent] (Settings → Bluetooth & devices → Printers & scanners).");
+    process.exit(1);
+  }
+
+  console.log("[print-agent] Installed printers:");
+  printers.forEach((name, i) => {
+    console.log(`  ${i + 1}. ${name}`);
+  });
+  console.log("");
+
+  const rl = readline.createInterface({
+    input : process.stdin,
+    output: process.stdout,
+  });
+
+  await new Promise((resolve) => {
+    const ask = () => {
+      rl.question(
+        `[print-agent] Enter the number of your thermal printer (1–${printers.length}): `,
+        (answer) => {
+          const n = parseInt(answer.trim(), 10);
+          if (isNaN(n) || n < 1 || n > printers.length) {
+            console.log(`[print-agent] Please enter a number between 1 and ${printers.length}.`);
+            return ask();
+          }
+          const chosen = printers[n - 1];
+          const cfg = { printerName: chosen, port: CONFIG_DEFAULTS.port };
+          try {
+            saveConfig(cfg);
+            runtimeConfig = cfg;
+            console.log(`\n[print-agent] ✓ Printer set to: "${chosen}"`);
+            console.log(`[print-agent] ✓ config.json created at: ${CONFIG_FILE}`);
+            console.log("[print-agent] ──────────────────────────────────────────\n");
+          } catch (writeErr) {
+            console.error(`[print-agent] ERROR: Could not write config.json: ${writeErr.message}`);
+            process.exit(1);
+          }
+          rl.close();
+          resolve();
+        }
+      );
+    };
+    ask();
+  });
+}
+
+// ─── PowerShell print script builder ─────────────────────────────────────────
+/**
+ * Generates the .ps1 script that prints a receipt via .NET PrintDocument.
  * 10 pt body; receipt block is horizontally centered on the 58 mm roll.
- * !H! → 11 Bold header, !B! → 10 Bold emphasis.
- * COL must match utils/textGenerator.js
+ * Line prefixes:  !H! → 11 pt Bold header  |  !B! → 10 pt Bold emphasis
+ *
+ * @param {string} printerName  Exact Windows printer name
+ * @param {string} txtPath      Full path to the temp .txt receipt file
+ * @returns {string}
  */
 function buildPsScript(printerName, txtPath) {
-  const safeTxt = txtPath.replace(/\\/g, "\\\\");
-  const COL = 20;
+  // Escape single quotes for PowerShell string literals
+  const safePrinter = printerName.replace(/'/g, "''");
+  const safeTxt     = txtPath.replace(/\\/g, "\\\\");
+  const COL         = 20;
 
   return `
 Add-Type -AssemblyName System.Drawing
 
-$printerName = '${printerName}'
+$printerName = '${safePrinter}'
 $filePath    = '${safeTxt}'
 $colWidth    = ${COL}
 $lines       = [System.IO.File]::ReadAllLines($filePath)
@@ -54,12 +226,12 @@ $fontBold    = New-Object System.Drawing.Font('Courier New', 10, [System.Drawing
 $fontHeader  = New-Object System.Drawing.Font('Courier New', 11, [System.Drawing.FontStyle]::Bold)
 $brush       = [System.Drawing.Brushes]::Black
 $fmt         = New-Object System.Drawing.StringFormat
-$fmt.Trimming = [System.Drawing.StringTrimming]::None
+$fmt.Trimming    = [System.Drawing.StringTrimming]::None
 $fmt.FormatFlags = [System.Drawing.StringFormatFlags]::NoWrap
 
 $pd = New-Object System.Drawing.Printing.PrintDocument
-$pd.PrinterSettings.PrinterName = $printerName
-$pd.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0)
+$pd.PrinterSettings.PrinterName     = $printerName
+$pd.DefaultPageSettings.Margins     = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0)
 
 $pd.add_PrintPage({
     param($sender, $e)
@@ -70,14 +242,13 @@ $pd.add_PrintPage({
     $pageW = [float]($e.MarginBounds.Width)
     if ($pageW -le 0) { $pageW = [float]($e.PageBounds.Width) }
 
-    # Center the fixed-width receipt block on the paper
     $sample   = '0' * $colWidth
     $contentW = [float]($e.Graphics.MeasureString($sample, $fontRegular).Width)
     $x        = [float]([Math]::Max(0, ($pageW - $contentW) / 2.0))
     $maxW     = [float]($contentW + 2)
 
     while ($idx -lt $lines.Length) {
-        $raw = $lines[$idx]
+        $raw  = $lines[$idx]
         $font = $fontRegular
         $text = $raw
         if ($raw.StartsWith('!H!')) {
@@ -87,7 +258,7 @@ $pd.add_PrintPage({
             $font = $fontBold
             $text = $raw.Substring(3)
         }
-        $lh = [float]($font.GetHeight($e.Graphics)) + 1
+        $lh   = [float]($font.GetHeight($e.Graphics)) + 1
         $rect = New-Object System.Drawing.RectangleF($x, $y, $maxW, $lh)
         $e.Graphics.DrawString($text, $font, $brush, $rect, $fmt)
         $y   += $lh
@@ -109,51 +280,59 @@ $pd.Dispose()
 
 // ─── Core print helper ────────────────────────────────────────────────────────
 /**
- * Writes receipt text + a .ps1 helper script to temp/,
- * executes the script to print via .NET PrintDocument,
- * then deletes both temp files.
+ * Writes the receipt text + a generated .ps1 script to TEMP_DIR,
+ * executes the script to print via .NET PrintDocument, then cleans up.
  *
- * @param {string} txtPath  Full path for the temp .txt receipt file.
- * @param {string} text     Plain-text receipt content.
+ * @param {string} txtPath  Absolute path for the temp .txt file
+ * @param {string} text     Plain-text receipt content
  * @returns {Promise<void>}
  */
 function sendToPrinter(txtPath, text) {
   return new Promise((resolve, reject) => {
-    const printerName = config.PRINTER_NAME;
-    const ps1Path     = txtPath.replace(/\.txt$/, ".ps1");
+    const printerName = runtimeConfig.printerName;
+
+    if (!printerName) {
+      return reject(new Error(
+        "No printer configured. POST /config with { printerName } or restart after setting config.json."
+      ));
+    }
+
+    const ps1Path = txtPath.replace(/\.txt$/, ".ps1");
 
     const cleanup = () => {
-      [txtPath, ps1Path].forEach((f) => {
+      for (const f of [txtPath, ps1Path]) {
         fs.unlink(f, (e) => {
-          if (e) console.warn("Could not delete temp file:", e.message);
+          if (e) logger.warn(`Could not delete temp file ${f}: ${e.message}`);
         });
-      });
+      }
     };
 
-    // 1. Write the .ps1 script
     const psContent = buildPsScript(printerName, txtPath);
+
+    // Write .ps1 first, then .txt, then execute
     fs.writeFile(ps1Path, psContent, "utf8", (psErr) => {
       if (psErr) return reject(psErr);
 
-      // 2. Write the .txt receipt
       fs.writeFile(txtPath, text, "utf8", (txtErr) => {
-        if (txtErr) { cleanup(); return reject(txtErr); }
+        if (txtErr) {
+          cleanup();
+          return reject(txtErr);
+        }
 
-        // 3. Execute the script
         const cmd = `powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "${ps1Path}"`;
-        console.log("Sending to printer:", printerName);
+        logger.info(`Sending to printer: "${printerName}"`);
 
         exec(cmd, (execErr, stdout, stderr) => {
           cleanup();
 
           if (execErr) {
-            console.error("exec error:", execErr.message);
-            if (stderr) console.error("stderr:", stderr);
+            logger.error(`Print exec error: ${execErr.message}`);
+            if (stderr) logger.error(`stderr: ${stderr.trim()}`);
             return reject(new Error(stderr || execErr.message));
           }
 
-          if (stdout) console.log("powershell stdout:", stdout);
-          console.log("Print completed");
+          if (stdout) logger.info(`PS stdout: ${stdout.trim()}`);
+          logger.info("Print completed successfully");
           resolve();
         });
       });
@@ -161,26 +340,127 @@ function sendToPrinter(txtPath, text) {
   });
 }
 
-// ─── POST /print-test ─────────────────────────────────────────────────────────
-app.post("/print-test", async (req, res) => {
-  console.log("--- /print-test ---");
-  const txtPath = path.join(TEMP_DIR, "test-receipt.txt");
+// ─── Receipt text builder (re-uses server/textGenerator.js if available) ──────
+/**
+ * When packaged with pkg, server/textGenerator.js is bundled.
+ * Falls back to an inline minimal builder so the standalone exe works
+ * even if the file tree differs.
+ */
+let buildReceiptText;
+try {
+  // Works in both dev (relative path) and pkg (bundled snapshot)
+  buildReceiptText = require("./server/textGenerator");
+} catch {
+  // Minimal inline fallback
+  buildReceiptText = (data) => {
+    if (!data) {
+      return [
+        "!H!  StoreSaarthi  ",
+        "   TEST PRINT   ",
+        "--------------------",
+        "Test receipt",
+        "--------------------",
+        "    Thank you!      ",
+        "",
+        "",
+      ].join("\r\n");
+    }
+    const lines = [];
+    lines.push(`!H!${data.shopName || "StoreSaarthi"}`);
+    lines.push("--------------------");
+    (data.items || []).forEach((it) => {
+      lines.push(`${it.name}  x${it.qty}  ${it.total}`);
+    });
+    lines.push("--------------------");
+    lines.push(`TOTAL  ${data.total}`);
+    lines.push("");
+    lines.push("");
+    return lines.join("\r\n");
+  };
+}
+
+// ─── Express app ──────────────────────────────────────────────────────────────
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// Request logger
+app.use((req, _res, next) => {
+  logger.info(`→ ${req.method} ${req.path}`);
+  next();
+});
+
+// ── GET / — health check ──────────────────────────────────────────────────────
+app.get("/", (_req, res) => {
+  res.json({
+    success     : true,
+    service     : "StoreSaarthi Print Agent",
+    version     : "2.0.0",
+    printer     : runtimeConfig.printerName || "(not configured)",
+    port        : runtimeConfig.port,
+    configFile  : CONFIG_FILE,
+    uptime      : Math.floor(process.uptime()) + "s",
+  });
+});
+
+// ── GET /printers — list all installed Windows printers ───────────────────────
+app.get("/printers", async (_req, res) => {
+  logger.info("Listing installed printers");
   try {
-    const text = buildReceiptText(null);
-    console.log("Receipt text built");
-    await sendToPrinter(txtPath, text);
-    return res.json({ success: true, message: "Printed successfully" });
+    const printers = await listPrinters();
+    logger.info(`Found ${printers.length} printer(s)`);
+    return res.json({ success: true, printers });
   } catch (err) {
-    console.error("Print failed:", err.stack || err.message);
+    logger.error(`GET /printers error: ${err.message}`);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ─── POST /print-bill ─────────────────────────────────────────────────────────
+// ── POST /config — update printer name (no restart needed) ───────────────────
+app.post("/config", (req, res) => {
+  const { printerName, port } = req.body || {};
+
+  if (printerName !== undefined && typeof printerName !== "string") {
+    return res.status(400).json({ success: false, error: "printerName must be a string" });
+  }
+
+  const updated = {
+    printerName : printerName !== undefined ? printerName.trim() : runtimeConfig.printerName,
+    port        : port        !== undefined ? Number(port)        : runtimeConfig.port,
+  };
+
+  try {
+    saveConfig(updated);
+    runtimeConfig = updated;
+    logger.info(`Config updated via API → printer="${updated.printerName}" port=${updated.port}`);
+    return res.json({ success: true, config: updated });
+  } catch (err) {
+    logger.error(`POST /config write error: ${err.message}`);
+    return res.status(500).json({ success: false, error: `Could not save config.json: ${err.message}` });
+  }
+});
+
+// ── POST /print-test — send a test receipt to the printer ─────────────────────
+app.post("/print-test", async (_req, res) => {
+  logger.info("--- /print-test ---");
+  const txtPath = path.join(TEMP_DIR, `test-${Date.now()}.txt`);
+  try {
+    const text = buildReceiptText(null);
+    logger.info("Test receipt text built");
+    await sendToPrinter(txtPath, text);
+    return res.json({ success: true, message: "Test receipt printed successfully" });
+  } catch (err) {
+    logger.error(`/print-test failed: ${err.message}`);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── POST /print-bill — print a real bill ──────────────────────────────────────
 /**
- * Body (shop/customer aliases supported for older clients):
+ * Body:
  * {
- *   "shop" | "shopName", "customer" | "customerName",
+ *   "shopName"      | "shop",
+ *   "customerName"  | "customer",
  *   "billNumber", "createdAt",
  *   "items": [{ "name", "qty", "price", "total", "unit" }],
  *   "subtotal", "discount", "tax", "total", "paid",
@@ -188,56 +468,118 @@ app.post("/print-test", async (req, res) => {
  * }
  */
 app.post("/print-bill", async (req, res) => {
-  console.log("--- /print-bill ---");
+  logger.info("--- /print-bill ---");
   const body = req.body;
 
   if (!body || !Array.isArray(body.items) || body.items.length === 0) {
-    return res.status(400).json({ success: false, error: "items array is required and must not be empty" });
+    return res.status(400).json({
+      success: false,
+      error: "items array is required and must not be empty",
+    });
   }
 
   const receiptData = {
-    shopName:       body.shopName || body.shop || "StoreSaarthi",
-    customerName:   body.customerName || body.customer || null,
-    billNumber:     body.billNumber ?? null,
-    createdAt:      body.createdAt || new Date().toISOString(),
-    items:          body.items,
-    subtotal:       body.subtotal ?? body.total,
-    discount:       body.discount || 0,
-    tax:            body.tax || 0,
-    total:          body.total ?? body.subtotal,
-    paid:           body.paid ?? body.total ?? body.subtotal,
-    paymentMode:    body.paymentMode || null,
-    paymentStatus:  body.paymentStatus || "PAID",
+    shopName      : body.shopName      || body.shop     || "StoreSaarthi",
+    customerName  : body.customerName  || body.customer || null,
+    billNumber    : body.billNumber    ?? null,
+    createdAt     : body.createdAt     || new Date().toISOString(),
+    items         : body.items,
+    subtotal      : body.subtotal      ?? body.total,
+    discount      : body.discount      || 0,
+    tax           : body.tax           || 0,
+    total         : body.total         ?? body.subtotal,
+    paid          : body.paid          ?? body.total ?? body.subtotal,
+    paymentMode   : body.paymentMode   || null,
+    paymentStatus : body.paymentStatus || "PAID",
   };
 
   const txtPath = path.join(TEMP_DIR, `bill-${Date.now()}.txt`);
   try {
     const text = buildReceiptText(receiptData);
-    console.log("Receipt text built");
+    logger.info("Bill receipt text built");
     await sendToPrinter(txtPath, text);
-    return res.json({ success: true, message: "Printed successfully" });
+    return res.json({ success: true, message: "Bill printed successfully" });
   } catch (err) {
-    console.error("Print failed:", err.stack || err.message);
+    logger.error(`/print-bill failed: ${err.message}`);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ─── 404 ──────────────────────────────────────────────────────────────────────
+// ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
-  res.status(404).json({ success: false, error: `${req.method} ${req.path} not found` });
+  res.status(404).json({ success: false, error: `${req.method} ${req.path} — route not found` });
 });
 
-// ─── Global error handler ─────────────────────────────────────────────────────
+// ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
-  console.error("Unhandled:", err.stack);
+  logger.error(`Unhandled express error: ${err.stack || err.message}`);
   res.status(500).json({ success: false, error: err.message });
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
-app.listen(config.PORT, () => {
-  console.log("─────────────────────────────────────");
-  console.log(`  print-agent started`);
-  console.log(`  http://localhost:${config.PORT}`);
-  console.log(`  Printer : ${config.PRINTER_NAME}`);
-  console.log("─────────────────────────────────────");
+// ─── Entry point ──────────────────────────────────────────────────────────────
+async function main() {
+  logger.info("Starting StoreSaarthi Print Agent...");
+  logger.info(`Mode: ${IS_PKG ? "packaged (pkg)" : "development (node)"}`);
+  logger.info(`Base dir: ${BASE_DIR}`);
+  logger.info(`Config file: ${CONFIG_FILE}`);
+  logger.info(`Logs dir: ${LOGS_DIR}`);
+
+  const configExists = fs.existsSync(CONFIG_FILE);
+
+  if (!configExists) {
+    // ── Case A: interactive console → first-time setup ──────────────────────
+    if (process.stdin.isTTY) {
+      await runFirstTimeSetup();
+    } else {
+      // ── Case B: headless service, no config → fail fast ─────────────────
+      const msg = [
+        "[print-agent] FATAL: config.json not found and no interactive console available.",
+        "[print-agent] This agent must be run manually ONCE before being installed as a service.",
+        "[print-agent] Steps:",
+        "[print-agent]   1. Copy print-agent.exe to C:\\print-agent\\",
+        "[print-agent]   2. Run it from a Command Prompt: print-agent.exe",
+        "[print-agent]   3. Select your printer from the numbered list.",
+        "[print-agent]   4. Confirm config.json was created in C:\\print-agent\\",
+        "[print-agent]   5. Then install as a Windows Service (see README.md).",
+        `[print-agent] Expected config location: ${CONFIG_FILE}`,
+      ].join("\n");
+
+      console.error(msg);
+
+      // Write to a dedicated error.log so NSSM's service log is clear
+      try {
+        const errorLog = path.join(LOGS_DIR, "error.log");
+        const ts       = new Date().toISOString();
+        fs.appendFileSync(
+          errorLog,
+          `\n[${ts}] FATAL STARTUP ERROR\n${msg}\n`,
+          "utf8"
+        );
+        console.error(`[print-agent] Error details written to: ${errorLog}`);
+      } catch {
+        // Can't write log — stderr already has the message
+      }
+
+      process.exit(1);
+    }
+  }
+
+  // Config is now guaranteed to exist — (re)load it
+  runtimeConfig = loadConfig();
+
+  const PORT = runtimeConfig.port || 4000;
+
+  app.listen(PORT, () => {
+    logger.info("─────────────────────────────────────────");
+    logger.info("  StoreSaarthi Print Agent started");
+    logger.info(`  http://localhost:${PORT}`);
+    logger.info(`  Printer : ${runtimeConfig.printerName || "(not set — POST /config to configure)"}`);
+    logger.info(`  Config  : ${CONFIG_FILE}`);
+    logger.info("─────────────────────────────────────────");
+  });
+}
+
+main().catch((err) => {
+  logger.error(`Fatal startup error: ${err.stack || err.message}`);
+  process.exit(1);
 });

@@ -443,6 +443,25 @@ function getReportDateRange(period) {
   };
 }
 
+/* --------------------------------------------------
+   ALL-TIME ANALYTICS
+-------------------------------------------------- */
+export async function getAllTimeAnalytics(req, res) {
+  try {
+    const shopId = getShopId(req, res);
+    if (!shopId) return;
+
+    const bills = await Bill.find({ shopId }).lean().then(r => r.map(decryptBill));
+
+    res.json({
+      success: true,
+      ...computeAnalyticsFromBills(bills),
+    });
+  } catch {
+    res.status(500).json({ success: false });
+  }
+}
+
 export async function getAnalyticsReport(req, res) {
   try {
     const shopId = getShopId(req, res);
