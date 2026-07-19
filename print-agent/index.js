@@ -598,6 +598,103 @@ app.post("/print-bill", async (req, res) => {
   }
 });
 
+// ── KOT helpers ───────────────────────────────────────────────────────────────
+function centre(text, width) {
+  text = String(text);
+  if (text.length >= width) return text.substring(0, width);
+  const pad = Math.floor((width - text.length) / 2);
+  return (" ".repeat(pad) + text).padEnd(width);
+}
+
+// ── POST /print-kot — Kitchen Order Ticket ───────────────────────────────────
+/**
+ * Body:
+ * {
+ *   "shopName", "billNumber", "createdAt",
+ *   "items": [{ "name", "qty", "unit" }],
+ *   "customerName", "tableInfo"
+ * }
+ */
+app.post("/print-kot", async (req, res) => {
+  logger.info("--- /print-kot ---");
+  const body = req.body;
+
+  if (!body || !Array.isArray(body.items) || body.items.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: "items array is required and must not be empty",
+    });
+  }
+
+  const COL = 20;
+  const DIVIDER = "-".repeat(COL);
+
+  // Build KOT receipt text
+  const lines = [];
+  const shop = String(body.shopName || "StoreSaarthi").trim();
+  lines.push(`!H!${centre(shop, COL)}`);
+  lines.push(`!B!${centre("-- KOT --", COL)}`);
+  lines.push(DIVIDER);
+
+  if (body.billNumber != null) {
+    lines.push(`Bill #${body.billNumber}`);
+  }
+
+  const dt = body.createdAt ? new Date(body.createdAt) : new Date();
+  const dd = String(dt.getDate()).padStart(2, "0");
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const yy = String(dt.getFullYear()).slice(-2);
+  let h = dt.getHours();
+  const min = String(dt.getMinutes()).padStart(2, "0");
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  lines.push(`${dd}/${mm}/${yy}  ${h}:${min}${ap}`);
+
+  if (body.customerName) {
+    lines.push(`Cust: ${body.customerName}`);
+  }
+  if (body.tableInfo) {
+    lines.push(`Table: ${body.tableInfo}`);
+  }
+
+  lines.push(DIVIDER);
+  lines.push(`!B!${"Item".padEnd(COL - 4)}Qty`);
+  lines.push(DIVIDER);
+
+  (body.items || []).forEach((item) => {
+    const name = String(item.name || "Item");
+    const qty = Number(item.qty) || 1;
+    const unit = item.unit ? ` ${item.unit}` : "";
+    const qtyStr = `${qty}${unit}`;
+    const maxName = COL - qtyStr.length - 1;
+    const displayName = name.length > maxName ? name.substring(0, maxName) : name;
+    const spaces = Math.max(1, COL - displayName.length - qtyStr.length);
+    lines.push(displayName + " ".repeat(spaces) + qtyStr);
+  });
+
+  lines.push(DIVIDER);
+  lines.push(centre("** KITCHEN COPY **", COL));
+  // Feed lines for paper cut
+  lines.push("");
+  lines.push("");
+  lines.push("");
+  lines.push("");
+  lines.push("");
+
+  const text = lines.join("\r\n");
+
+  const ts = Date.now();
+  const txtPath = path.join(TEMP_DIR, `kot-${ts}.txt`);
+
+  try {
+    await sendToPrinter(txtPath, text);
+    return res.json({ success: true, message: "KOT printed successfully" });
+  } catch (err) {
+    logger.error(`/print-kot failed: ${err.message}`);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ── 404 ───────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, error: `${req.method} ${req.path} — route not found` });
