@@ -8,7 +8,9 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "server": "node index.js",
-    "build": "pkg index.js --config package.json --output dist/print-agent.exe",
+     "build": "npx @yao-pkg/pkg@5 index.js --targets node20-win-x64 --output dist/print-agent-x64.exe",
+    "build:x64": "npx @yao-pkg/pkg@5 index.js --targets node20-win-x64 --output dist/print-agent-x64.exe",
+    "build:all": "npm run build:x64",
     "dist": "electron-builder --win --x64",
     "dist:dir": "electron-builder --win --x64 --dir"
   },
@@ -19,11 +21,11 @@
   "devDependencies": {
     "electron": "^29.1.0",
     "electron-builder": "^24.13.3",
-    "pkg": "^5.8.1"
+    "@yao-pkg/pkg": "^5.15.0"
   },
   "pkg": {
     "targets": [
-      "node18-win-x64"
+      "node20-win-x64"
     ],
     "assets": [
       "server/textGenerator.js"

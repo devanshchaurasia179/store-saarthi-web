@@ -7,8 +7,12 @@ import { BillsPage } from './pages/BillsPage'
 import { CreateBillPage } from './pages/CreateBillPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { InventoryPage } from './pages/InventoryPage'
+import { LedgerPage } from './pages/LedgerPage'
 import { LoginPage } from './pages/LoginPage'
 import { OnboardingPage } from './pages/OnboardingPage'
+import { PrintAgentPage } from './pages/PrintAgentPage'
+import { ProfilePage } from './pages/ProfilePage'
+import './styles/print-agent.css'
 
 export default function App() {
   return (
@@ -26,7 +30,10 @@ export default function App() {
             <Route path="/bills/new" element={<CreateBillPage />} />
             <Route path="/bills/:billId" element={<BillDetailPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/ledger" element={<LedgerPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/print-agent" element={<PrintAgentPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

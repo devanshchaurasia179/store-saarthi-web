@@ -1,0 +1,618 @@
+/* ==========================================================================
+   Print Agent Setup Page
+   ========================================================================== */
+
+/* ── Page header ─────────────────────────────────────────────────────────── */
+
+.pa-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px 28px 20px;
+  flex-wrap: wrap;
+}
+
+.pa-header__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #111827, #374151);
+  color: #ffffff;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pa-header__badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  align-self: center;
+  flex-wrap: wrap;
+}
+
+/* ── Two-column layout ───────────────────────────────────────────────────── */
+
+.pa-layout {
+  display: flex;
+  gap: 24px;
+  padding: 0 28px 28px;
+  align-items: flex-start;
+}
+
+.pa-steps-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pa-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── Step card ───────────────────────────────────────────────────────────── */
+
+.pa-step {
+  padding: 0 !important;
+  overflow: hidden;
+  transition: box-shadow 150ms ease;
+}
+
+.pa-step--active {
+  border-color: #c7d2fe !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.08) !important;
+}
+
+.pa-step--done {
+  opacity: 0.85;
+}
+
+.pa-step__header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: background 150ms ease;
+}
+
+.pa-step__header:hover {
+  background: #f9fafb;
+}
+
+/* Step number bubble */
+.pa-step__bubble {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  border: 2px solid #e5e7eb;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  flex-shrink: 0;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.pa-step__bubble--active {
+  background: #eef2ff;
+  border-color: #6366f1;
+  color: #4338ca;
+}
+
+.pa-step__bubble--done {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #16a34a;
+}
+
+.pa-step__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.pa-step__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.pa-step--done .pa-step__title {
+  color: #6b7280;
+}
+
+.pa-step__desc {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.pa-step__icon-end {
+  color: #d1d5db;
+  flex-shrink: 0;
+}
+
+.pa-step--active .pa-step__icon-end {
+  color: #6366f1;
+}
+
+/* Step body (open) */
+.pa-step__body {
+  padding: 0 20px 20px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.pa-step__text {
+  margin: 12px 0 0;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.pa-step__subhint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.pa-step__footer {
+  display: flex;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+/* ── Ordered list inside step ────────────────────────────────────────────── */
+
+.pa-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pa-list li {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.pa-list__num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pa-sublist {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.pa-sublist li {
+  list-style: disc;
+}
+
+/* ── Download cards ──────────────────────────────────────────────────────── */
+
+.pa-download-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pa-download-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  text-decoration: none;
+  color: inherit;
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.pa-download-card:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.08);
+}
+
+.pa-download-card__icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.pa-download-card__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pa-download-card__name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  font-family: monospace;
+}
+
+.pa-download-card__hint {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* ── File link (inline) ──────────────────────────────────────────────────── */
+
+.pa-file-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 4px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  font-family: monospace;
+  transition: background 150ms ease;
+}
+
+.pa-file-link:hover {
+  background: #1f2937;
+}
+
+.pa-file-link--ghost {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  margin-left: 6px;
+}
+
+.pa-file-link--ghost:hover {
+  background: #e5e7eb;
+}
+
+/* ── Code block ──────────────────────────────────────────────────────────── */
+
+.pa-code {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 10px 14px;
+  background: #111827;
+  border-radius: 10px;
+  overflow-x: auto;
+}
+
+.pa-code__text {
+  font-family: monospace;
+  font-size: 13px;
+  color: #e2e8f0;
+  white-space: nowrap;
+}
+
+.pa-code__copy {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 6px;
+  border: 1px solid #374151;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.pa-code__copy:hover {
+  background: #1f2937;
+  color: #f9fafb;
+}
+
+/* ── Tip / Warning box ───────────────────────────────────────────────────── */
+
+.pa-tip {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #92400e;
+  line-height: 1.5;
+}
+
+.pa-tip__icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #d97706;
+}
+
+/* ── Callout box ─────────────────────────────────────────────────────────── */
+
+.pa-callout {
+  display: flex;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #3730a3;
+  line-height: 1.5;
+}
+
+.pa-callout--success {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #14532d;
+}
+
+.pa-callout__icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.pa-callout__title {
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.pa-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 0;
+  background: #111827;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.pa-btn:hover {
+  background: #1f2937;
+}
+
+.pa-btn--ghost {
+  background: transparent;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+
+.pa-btn--ghost:hover {
+  background: #f3f4f6;
+}
+
+/* ── Quick download links (sidebar) ─────────────────────────────────────── */
+
+.pa-qdl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: monospace;
+  text-decoration: none;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.pa-qdl:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+
+.pa-qdl--ghost {
+  background: transparent;
+  color: #6b7280;
+}
+
+.pa-qdl--ghost:hover {
+  background: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
+/* ── Requirements list ───────────────────────────────────────────────────── */
+
+.pa-req-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pa-req-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+}
+
+/* ── FAQ section ─────────────────────────────────────────────────────────── */
+
+.pa-faq-section {
+  padding: 0 28px 40px;
+}
+
+.pa-faq {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.pa-faq__item {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.pa-faq__item:last-child {
+  border-bottom: 0;
+}
+
+.pa-faq__q {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  cursor: pointer;
+  transition: background 150ms ease;
+}
+
+.pa-faq__q:hover {
+  background: #f9fafb;
+}
+
+.pa-faq__item--open .pa-faq__q {
+  background: #f9fafb;
+  color: #4338ca;
+  font-weight: 600;
+}
+
+.pa-faq__a {
+  padding: 0 20px 16px;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.65;
+}
+
+.pa-faq__a code {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+/* ── Inline link ─────────────────────────────────────────────────────────── */
+
+.pa-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: #4338ca;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.pa-link:hover {
+  text-decoration: underline;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 960px) {
+  .pa-layout {
+    flex-direction: column;
+    padding: 0 16px 24px;
+  }
+
+  .pa-sidebar {
+    width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .pa-sidebar > * {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .pa-header {
+    padding: 16px 16px 12px;
+  }
+
+  .pa-faq-section {
+    padding: 0 16px 32px;
+  }
+}
+
+@media (max-width: 560px) {
+  .pa-header__badges {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .pa-step__footer {
+    flex-direction: column;
+  }
+
+  .pa-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .pa-download-grid {
+    gap: 8px;
+  }
+}

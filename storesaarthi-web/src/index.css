@@ -1,3 +1,108 @@
+/* ── Google Fonts must come first ── */
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&family=Jost:wght@400;500;600;700&display=swap');
+
+/* ── Tailwind v4 ── */
+@import "tailwindcss";
+
+/* ── Theme tokens (ported from tailwind.config.js) ── */
+@theme {
+  /* Colors */
+  --color-primary: #1E3A8A;
+  --color-primary-hover: #1D4ED8;
+  --color-primary-soft: #EFF6FF;
+  --color-primary-deep: #1e3a8a;
+  --color-surface: #FFFFFF;
+  --color-bg: #F8FAFC;
+  --color-border: #E2E8F0;
+  --color-heading: #0F172A;
+  --color-body: #334155;
+  --color-muted: #64748B;
+  --color-success: #16A34A;
+  --color-warning: #F59E0B;
+  --color-danger: #DC2626;
+  --color-success-bg: #F0FDF4;
+  --color-warning-bg: #FFFBEB;
+  --color-danger-bg: #FEF2F2;
+
+  /* Fonts */
+  --font-display: 'Oswald', sans-serif;
+  --font-heading: 'Poppins', sans-serif;
+  --font-body: 'Jost', sans-serif;
+
+  /* Font sizes */
+  --text-2xs: 0.625rem;
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.25rem;
+  --text-2xl: 1.5rem;
+  --text-3xl: 1.875rem;
+  --text-4xl: 2.25rem;
+
+  /* Spacing */
+  --spacing-0_5: 4px;
+  --spacing-1: 8px;
+  --spacing-1_5: 12px;
+  --spacing-2: 16px;
+  --spacing-2_5: 20px;
+  --spacing-3: 24px;
+  --spacing-4: 32px;
+  --spacing-5: 40px;
+  --spacing-6: 48px;
+  --spacing-7: 56px;
+  --spacing-8: 64px;
+  --spacing-9: 72px;
+  --spacing-10: 80px;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 18px;
+  --radius-3xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm: 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-card: 0 4px 16px rgba(15,23,42,0.06), 0 1px 4px rgba(15,23,42,0.04);
+  --shadow-card-hover: 0 8px 28px rgba(15,23,42,0.10), 0 2px 8px rgba(15,23,42,0.06);
+  --shadow-modal: 0 20px 60px rgba(15,23,42,0.16);
+  --shadow-sidebar: 1px 0 0 #E2E8F0;
+
+  /* Screens */
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* Animations */
+  --animate-spin-slow: spin 1s linear infinite;
+  --animate-pulse-slow: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite;
+  --animate-fade-in: fadeIn 200ms ease-out;
+  --animate-slide-up: slideUp 200ms ease-out;
+  --animate-shimmer: shimmer 1.5s infinite;
+
+  /* Keyframes */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
 /* ── Global styles, variables, resets, shared utilities ── */
 @import './styles/globals.css';
 

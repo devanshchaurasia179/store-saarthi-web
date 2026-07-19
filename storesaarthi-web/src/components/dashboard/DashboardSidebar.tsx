@@ -6,6 +6,8 @@ import {
   IconNewBill,
   IconInventory,
   IconAnalytics,
+  IconLedger,
+  IconPrintAgent,
   IconSettings,
   IconHelp,
   IconLogout,
@@ -18,7 +20,9 @@ const NAV_ITEMS = [
   { to: '/bills', Icon: IconBills, label: 'Bills' },
   { to: '/bills/new', Icon: IconNewBill, label: 'New Bill' },
   { to: '/inventory', Icon: IconInventory, label: 'Inventory' },
+  { to: '/ledger', Icon: IconLedger, label: 'Ledger' },
   { to: '/analytics', Icon: IconAnalytics, label: 'Analytics' },
+  { to: '/print-agent', Icon: IconPrintAgent, label: 'Print Agent' },
 ]
 
 const STORAGE_KEY = 'db-sidebar-collapsed'
@@ -85,18 +89,18 @@ export function DashboardSidebar({ active, onLogout }: Props) {
       {/* Bottom utility nav */}
       <ul className="db-sidebar__nav db-sidebar__nav--bottom">
         <li>
-          <button
-            type="button"
-            className="db-sidebar__item db-sidebar__item--btn"
+          <Link
+            to="/profile"
+            className={`db-sidebar__item${active === '/profile' ? ' db-sidebar__item--active' : ''}`}
+            aria-current={active === '/profile' ? 'page' : undefined}
             title={collapsed ? 'Settings' : undefined}
             aria-label="Settings"
-            disabled
           >
             <span className="db-sidebar__icon" aria-hidden>
               <IconSettings />
             </span>
             <span className="db-sidebar__label">Settings</span>
-          </button>
+          </Link>
         </li>
         <li>
           <button

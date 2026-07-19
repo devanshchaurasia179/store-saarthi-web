@@ -105,13 +105,32 @@ let runtimeConfig = loadConfig();
 
 // ─── Windows printer enumeration ──────────────────────────────────────────────
 /**
- * Lists installed Windows printers using PowerShell.
+ * Lists installed Windows printers via PowerShell.
+ *
+ * Strategy (most-to-least capable):
+ *  1. Get-Printer           — PrintManagement module, Win8.1+ / Server 2012+
+ *  2. Get-WmiObject Win32_Printer — WMI, available on ALL Windows versions (Win7+)
+ *
  * Returns a Promise<string[]> (empty array on failure).
  */
 function listPrinters() {
   return new Promise((resolve) => {
-    const cmd = `powershell.exe -NoProfile -NonInteractive -Command "Get-Printer | Select-Object -ExpandProperty Name | ConvertTo-Json -Compress"`;
-    logger.info("Running: " + cmd);
+    // Single PS script: try Get-Printer first, fall back to WMI.
+    // Output is always a JSON array of name strings on stdout.
+    const psScript = [
+      "try {",
+      "  $names = Get-Printer -ErrorAction Stop | Select-Object -ExpandProperty Name",
+      "} catch {",
+      "  $names = Get-WmiObject Win32_Printer | Select-Object -ExpandProperty Name",
+      "}",
+      "if ($names -eq $null) { $names = @() }",
+      "$arr = @($names) | Where-Object { $_ -ne $null -and $_.Trim() -ne '' }",
+      "ConvertTo-Json -InputObject $arr -Compress",
+    ].join("; ");
+
+    const cmd = `powershell.exe -NoProfile -NonInteractive -Command "${psScript}"`;
+    logger.info("Enumerating printers...");
+
     exec(cmd, (err, stdout, stderr) => {
       if (err) {
         logger.error(`listPrinters error: ${stderr || err.message}`);
@@ -121,7 +140,7 @@ function listPrinters() {
         const raw = stdout.trim();
         if (!raw) return resolve([]);
         const parsed = JSON.parse(raw);
-        // PowerShell returns a bare string (not array) when there's exactly one printer
+        // PS returns a bare string (not array) when there is exactly one item
         const printers = Array.isArray(parsed) ? parsed : [parsed];
         resolve(printers.filter(Boolean));
       } catch (parseErr) {
