@@ -1,5 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import {
+  IndianRupee,
+  CheckCircle2,
+  AlertTriangle,
+  CreditCard,
+  Plus,
+  Package,
+  BarChart3,
+  FileText,
+  BookOpen,
+  TrendingUp,
+  TrendingDown,
+  ArrowRight,
+  Receipt,
+  Clock,
+} from 'lucide-react'
 import { fetchDailyAnalytics, fetchWeeklyAnalytics } from '../api/analytics'
 import { fetchBills } from '../api/bills'
 import { ApiError } from '../api/client'
@@ -40,24 +56,24 @@ type StatCardProps = {
   value: string
   delta?: string
   positive?: boolean
-  icon: string
-  iconBg: string
+  icon: React.ReactNode
+  variant: 'indigo' | 'emerald' | 'amber' | 'violet'
 }
 
-function StatCard({ label, value, delta, positive, icon, iconBg }: StatCardProps) {
+function StatCard({ label, value, delta, positive, icon, variant }: StatCardProps) {
   return (
-    <div className="db-stat">
+    <div className={`db-stat db-stat--${variant}`}>
       <div className="db-stat__top">
-        <span className="db-stat__icon" style={{ background: iconBg }} aria-hidden>
+        <span className={`db-stat__icon db-stat__icon--${variant}`} aria-hidden>
           {icon}
         </span>
-        <span className="db-stat__more" aria-hidden>···</span>
       </div>
       <p className="db-stat__label">{label}</p>
       <p className="db-stat__value">{value}</p>
       {delta && (
         <p className={`db-stat__delta${positive ? ' db-stat__delta--up' : ' db-stat__delta--down'}`}>
-          {positive ? '↑' : '↓'} {delta}
+          {positive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+          <span>{delta}</span>
         </p>
       )}
     </div>
@@ -105,7 +121,7 @@ function SalesBars({ days, loading }: BarChartProps) {
               style={{ height: `${pct}%` }}
               title={`${shortDay(d.date)}: ${fmt(d.totalSales)}`}
             />
-            <span className="db-chart__x">{shortDay(d.date)}</span>
+            <span className={`db-chart__x${isToday ? ' db-chart__x--active' : ''}`}>{shortDay(d.date)}</span>
           </div>
         )
       })}
@@ -116,17 +132,35 @@ function SalesBars({ days, loading }: BarChartProps) {
 // ─── Recent bills list ────────────────────────────────────────────────────────
 
 function RecentBills({ bills, loading }: { bills: Bill[]; loading: boolean }) {
-  if (loading) return <p className="db-panel__hint">Loading…</p>
-  if (!bills.length) return <p className="db-panel__hint">No bills yet.</p>
+  if (loading) {
+    return (
+      <div className="db-bill-skeleton">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="db-bill-skeleton__row" />
+        ))}
+      </div>
+    )
+  }
+  if (!bills.length) {
+    return (
+      <div className="db-bill-empty">
+        <Receipt size={32} strokeWidth={1.5} />
+        <p>No bills yet today</p>
+      </div>
+    )
+  }
   return (
     <ul className="db-bill-list">
       {bills.map((b) => (
         <li key={b._id}>
           <Link to={`/bills/${b._id}`} className="db-bill-row">
-            <span className="db-bill-row__icon" aria-hidden>📄</span>
+            <span className="db-bill-row__icon" aria-hidden>
+              <FileText size={18} />
+            </span>
             <span className="db-bill-row__info">
               <span className="db-bill-row__num">Bill #{b.dailyBillNumber}</span>
               <span className="db-bill-row__time">
+                <Clock size={11} />
                 {new Date(b.createdAt).toLocaleTimeString('en-IN', {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -135,6 +169,7 @@ function RecentBills({ bills, loading }: { bills: Bill[]; loading: boolean }) {
               </span>
             </span>
             <span className="db-bill-row__amt">{fmt(b.totalAmount)}</span>
+            <ArrowRight size={14} className="db-bill-row__arrow" />
           </Link>
         </li>
       ))}
@@ -149,39 +184,25 @@ function QuickPanel() {
     <aside className="db-panel">
       {/* quick actions */}
       <div className="db-panel__section">
-        <p className="db-panel__heading">Quick actions</p>
+        <p className="db-panel__heading">Quick Actions</p>
         <div className="db-panel__actions">
           <Link to="/bills/new" className="db-panel__action db-panel__action--primary">
-            <span aria-hidden>✚</span>
+            <Plus size={16} />
             <span>New Bill</span>
           </Link>
           <Link to="/inventory" className="db-panel__action">
-            <span aria-hidden>📦</span>
+            <Package size={16} />
             <span>Inventory</span>
           </Link>
           <Link to="/analytics" className="db-panel__action">
-            <span aria-hidden>📊</span>
+            <BarChart3 size={16} />
             <span>Analytics</span>
           </Link>
+          <Link to="/ledger" className="db-panel__action">
+            <BookOpen size={16} />
+            <span>Ledger</span>
+          </Link>
         </div>
-      </div>
-
-      {/* divider */}
-      <div className="db-panel__divider" />
-
-      {/* print agent download */}
-      <div className="db-panel__section">
-        <p className="db-panel__heading">Print Agent</p>
-        <a
-          href="/StoreSaarthiPrintAgentSetup.exe"
-          download
-          className="db-panel__download"
-        >
-          <span aria-hidden>↓</span> Download for Windows
-        </a>
-        <p className="db-panel__download-hint">
-          Enables bill printing from this app
-        </p>
       </div>
     </aside>
   )
@@ -244,99 +265,106 @@ export function DashboardPage() {
         <div className="db-topbar__greeting">
           <h1 className="db-topbar__title">{greet(ownerName)}</h1>
           <p className="db-topbar__sub">
-            {shop?.shopName} · Manage bills, inventory and sales
+            {shop?.shopName} · Here's your business at a glance
           </p>
         </div>
         <div className="db-topbar__right">
           <Link to="/bills/new" className="db-topbar__cta">
-            ✚ New Bill
+            <Plus size={16} />
+            <span>New Bill</span>
           </Link>
         </div>
       </header>
 
-        {/* ── Secret key banner ── */}
-        {secretKeyOnce && (
-          <div className="dash__secret" style={{ margin: '0 0 24px' }}>
-            <p className="dash__secret-title">Save your secret key</p>
-            <p className="dash__secret-body">
-              This is shown only once. Use it to sign in on other devices.
-            </p>
-            <code>{secretKeyOnce}</code>
-            <button type="button" className="auth-btn" onClick={clearSecretKeyOnce}>
-              I've saved it
-            </button>
-          </div>
-        )}
-
-        {/* ── Content area ── */}
-        <div className="db-content">
-          {/* ── Left: stats + chart + bills ── */}
-          <div className="db-main">
-            {/* Stat cards */}
-            <section className="db-stats" aria-label="Today's summary">
-              <StatCard
-                label="Today's Sales"
-                value={loadingStats ? '…' : fmt(daily?.totalSales ?? 0)}
-                icon="₹"
-                iconBg="linear-gradient(135deg, #0f6b4c, #1a9268)"
-                delta={daily?.debtVsSales.totalCollected
-                  ? `${fmt(daily.debtVsSales.totalCollected)} collected`
-                  : undefined}
-                positive
-              />
-              <StatCard
-                label="Collected"
-                value={loadingStats ? '…' : fmt(daily?.debtVsSales.totalCollected ?? 0)}
-                icon="✓"
-                iconBg="linear-gradient(135deg, #1d4ed8, #3b82f6)"
-                delta={daily && daily.debtVsSales.totalCollected > 0 && daily.totalSales > 0
-                  ? `${Math.round((daily.debtVsSales.totalCollected / daily.totalSales) * 100)}% of sales`
-                  : undefined}
-                positive
-              />
-              <StatCard
-                label="Pending Debt"
-                value={loadingStats ? '…' : fmt(daily?.debtVsSales.totalDebt ?? 0)}
-                icon="⚠"
-                iconBg="linear-gradient(135deg, #c45c26, #ea8145)"
-                delta={daily && daily.debtVsSales.totalDebt > 0 ? 'outstanding' : undefined}
-                positive={false}
-              />
-              <StatCard
-                label="Cash / UPI"
-                value={loadingStats ? '…' : `${fmt(daily?.paymentModes.CASH ?? 0)} / ${fmt(daily?.paymentModes.UPI ?? 0)}`}
-                icon="💳"
-                iconBg="linear-gradient(135deg, #7c3aed, #a855f7)"
-              />
-            </section>
-
-            {/* Sales trend chart */}
-            <section className="db-chart" aria-label="Weekly sales trend">
-              <div className="db-chart__head">
-                <div>
-                  <p className="db-chart__title">Weekly Sales</p>
-                  <p className="db-chart__total">{loadingChart ? '…' : fmt(weekTotal)}</p>
-                </div>
-                <Link to="/analytics" className="db-chart__link">
-                  Full report →
-                </Link>
-              </div>
-              <SalesBars days={weekDays} loading={loadingChart} />
-            </section>
-
-            {/* Recent bills */}
-            <section className="db-recent" aria-label="Recent bills">
-              <div className="db-recent__head">
-                <p className="db-recent__title">Recent Bills</p>
-                <Link to="/bills" className="db-chart__link">See all →</Link>
-              </div>
-              <RecentBills bills={bills} loading={loadingBills} />
-            </section>
-          </div>
-
-          {/* ── Right panel ── */}
-          <QuickPanel />
+      {/* ── Secret key banner ── */}
+      {secretKeyOnce && (
+        <div className="dash__secret" style={{ margin: '0 0 24px' }}>
+          <p className="dash__secret-title">Save your secret key</p>
+          <p className="dash__secret-body">
+            This is shown only once. Use it to sign in on other devices.
+          </p>
+          <code>{secretKeyOnce}</code>
+          <button type="button" className="auth-btn" onClick={clearSecretKeyOnce}>
+            I've saved it
+          </button>
         </div>
+      )}
+
+      {/* ── Content area ── */}
+      <div className="db-content">
+        {/* ── Left: stats + chart + bills ── */}
+        <div className="db-main">
+          {/* Stat cards */}
+          <section className="db-stats" aria-label="Today's summary">
+            <StatCard
+              label="Today's Sales"
+              value={loadingStats ? '…' : fmt(daily?.totalSales ?? 0)}
+              icon={<IndianRupee size={18} />}
+              variant="indigo"
+              delta={daily?.debtVsSales.totalCollected
+                ? `${fmt(daily.debtVsSales.totalCollected)} collected`
+                : undefined}
+              positive
+            />
+            <StatCard
+              label="Collected"
+              value={loadingStats ? '…' : fmt(daily?.debtVsSales.totalCollected ?? 0)}
+              icon={<CheckCircle2 size={18} />}
+              variant="emerald"
+              delta={daily && daily.debtVsSales.totalCollected > 0 && daily.totalSales > 0
+                ? `${Math.round((daily.debtVsSales.totalCollected / daily.totalSales) * 100)}% of sales`
+                : undefined}
+              positive
+            />
+            <StatCard
+              label="Pending Debt"
+              value={loadingStats ? '…' : fmt(daily?.debtVsSales.totalDebt ?? 0)}
+              icon={<AlertTriangle size={18} />}
+              variant="amber"
+              delta={daily && daily.debtVsSales.totalDebt > 0 ? 'outstanding' : undefined}
+              positive={false}
+            />
+            <StatCard
+              label="Cash / UPI"
+              value={loadingStats ? '…' : `${fmt(daily?.paymentModes.CASH ?? 0)} / ${fmt(daily?.paymentModes.UPI ?? 0)}`}
+              icon={<CreditCard size={18} />}
+              variant="violet"
+            />
+          </section>
+
+          {/* Sales trend chart */}
+          <section className="db-chart" aria-label="Weekly sales trend">
+            <div className="db-chart__head">
+              <div>
+                <p className="db-chart__title">
+                  <BarChart3 size={16} className="db-chart__title-icon" />
+                  Weekly Sales
+                </p>
+                <p className="db-chart__total">{loadingChart ? '…' : fmt(weekTotal)}</p>
+              </div>
+              <Link to="/analytics" className="db-chart__link">
+                Full report <ArrowRight size={13} />
+              </Link>
+            </div>
+            <SalesBars days={weekDays} loading={loadingChart} />
+          </section>
+
+          {/* Recent bills */}
+          <section className="db-recent" aria-label="Recent bills">
+            <div className="db-recent__head">
+              <p className="db-recent__title">
+                <Receipt size={16} className="db-recent__title-icon" />
+                Recent Bills
+              </p>
+              <Link to="/bills" className="db-chart__link">See all <ArrowRight size={13} /></Link>
+            </div>
+            <RecentBills bills={bills} loading={loadingBills} />
+          </section>
+        </div>
+
+        {/* ── Right panel ── */}
+        <QuickPanel />
+      </div>
     </DashboardLayout>
   )
 }

@@ -20,6 +20,7 @@ export type PrintBillPayload = {
   paid: number
   paymentMode: string
   paymentStatus: string
+  upiId?: string
 }
 
 /** Thermal print via Backend (cloud — used when the backend itself has a printer). */
@@ -98,6 +99,7 @@ export function billToPrintPayload(
   bill: Bill,
   shopName: string,
   customerName: string | null,
+  upiId?: string,
 ): PrintBillPayload {
   return {
     shopName,
@@ -118,6 +120,7 @@ export function billToPrintPayload(
     paid: Number(bill.paidAmount) || 0,
     paymentMode: bill.paymentMode,
     paymentStatus: bill.paymentStatus,
+    upiId: upiId || undefined,
   }
 }
 

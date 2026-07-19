@@ -220,8 +220,24 @@ function buildReceiptText(data) {
   }
 
   lines.push(DIVIDER);
+
+  // UPI QR code marker — the print engine will replace this with an actual QR image
+  if (data.upiId) {
+    lines.push(centre("Scan to Pay"));
+    lines.push(`!QR!${data.upiId}`);
+    lines.push(DIVIDER);
+  }
+
   lines.push(centre("Thank you!"));
-  lines.push(centre("Visit again"));
+  lines.push(centre("Visit us again"));
+  lines.push(padLine(""));
+  lines.push(padLine(""));
+  lines.push(padLine(""));
+  lines.push(padLine(""));
+  lines.push(padLine(""));
+  lines.push(padLine(""));
+  lines.push(padLine(""));
+  lines.push(padLine(""));
   lines.push(padLine(""));
   lines.push(padLine(""));
 

@@ -61,6 +61,7 @@ export type ProductVariant = {
 export type Product = {
   _id: string
   name: string
+  category?: string
   unit: string
   price: { sellingPrice: number }
   quantity: number

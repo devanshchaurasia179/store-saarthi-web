@@ -177,7 +177,6 @@ function ProductDrawer({ mode, initialForm, saving, saveError, onClose, onSubmit
 
   useEffect(() => {
     setForm(initialForm)
-    // slight delay so the drawer is visible before focusing
     const t = setTimeout(() => firstInputRef.current?.focus(), 60)
     return () => clearTimeout(t)
   }, [initialForm])
@@ -219,16 +218,15 @@ function ProductDrawer({ mode, initialForm, saving, saveError, onClose, onSubmit
           <h2>{title}</h2>
           <button
             type="button"
-            className="inv-icon-btn"
+            className="inv-drawer__close"
             onClick={onClose}
             aria-label="Close drawer"
           >
-            ✕
+            ×
           </button>
         </div>
 
         <form className="inv-drawer__body" onSubmit={handleSubmit} noValidate>
-          {/* name */}
           <label className="inv-label">
             Product name *
             <input
@@ -241,7 +239,6 @@ function ProductDrawer({ mode, initialForm, saving, saveError, onClose, onSubmit
             />
           </label>
 
-          {/* barcode */}
           <label className="inv-label">
             Barcode *
             <input
@@ -253,7 +250,6 @@ function ProductDrawer({ mode, initialForm, saving, saveError, onClose, onSubmit
             />
           </label>
 
-          {/* category */}
           <label className="inv-label">
             Category
             <input
@@ -264,7 +260,6 @@ function ProductDrawer({ mode, initialForm, saving, saveError, onClose, onSubmit
             />
           </label>
 
-          {/* price + unit */}
           <div className="inv-form-row">
             <label className="inv-label">
               Selling price (₹) *
@@ -295,7 +290,6 @@ function ProductDrawer({ mode, initialForm, saving, saveError, onClose, onSubmit
             </label>
           </div>
 
-          {/* quantity + expiry */}
           <div className="inv-form-row">
             <label className="inv-label">
               Quantity
@@ -319,7 +313,6 @@ function ProductDrawer({ mode, initialForm, saving, saveError, onClose, onSubmit
             </label>
           </div>
 
-          {/* toggles */}
           <div className="inv-toggles">
             <label className="inv-toggle">
               <input
@@ -339,7 +332,6 @@ function ProductDrawer({ mode, initialForm, saving, saveError, onClose, onSubmit
             </label>
           </div>
 
-          {/* variants */}
           <div className="inv-variants">
             <div className="inv-variants__head">
               <p className="inv-label-text">Variants</p>
@@ -363,21 +355,26 @@ function ProductDrawer({ mode, initialForm, saving, saveError, onClose, onSubmit
           </div>
 
           {saveError && (
-            <p className="auth-msg auth-msg--error" role="alert">
+            <div className="inv-drawer__error" role="alert">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+              </svg>
               {saveError}
-            </p>
+            </div>
           )}
 
           <div className="inv-drawer__footer">
             <button
               type="button"
-              className="auth-btn auth-btn--ghost"
+              className="inv-drawer__cancel-btn"
               onClick={onClose}
               disabled={saving}
             >
               Cancel
             </button>
-            <button type="submit" className="auth-btn" disabled={saving}>
+            <button type="submit" className="inv-drawer__save-btn" disabled={saving}>
               {saving ? 'Saving…' : mode === 'add' ? 'Add product' : 'Save changes'}
             </button>
           </div>
@@ -401,20 +398,28 @@ function DeleteModal({ product, saving, saveError, onCancel, onConfirm }: Delete
   return (
     <div className="inv-drawer-overlay" role="dialog" aria-modal="true" aria-label="Delete product">
       <div className="inv-modal">
+        <div className="inv-modal__icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <line x1="10" y1="11" x2="10" y2="17" />
+            <line x1="14" y1="11" x2="14" y2="17" />
+          </svg>
+        </div>
         <h2>Delete product?</h2>
         <p className="inv-modal__body">
           <strong>{product.name}</strong> will be permanently removed from your inventory. This
           cannot be undone.
         </p>
         {saveError && (
-          <p className="auth-msg auth-msg--error" role="alert">
+          <div className="inv-modal__error" role="alert">
             {saveError}
-          </p>
+          </div>
         )}
         <div className="inv-modal__actions">
           <button
             type="button"
-            className="auth-btn auth-btn--ghost"
+            className="inv-modal__cancel"
             onClick={onCancel}
             disabled={saving}
           >
@@ -422,7 +427,7 @@ function DeleteModal({ product, saving, saveError, onCancel, onConfirm }: Delete
           </button>
           <button
             type="button"
-            className="auth-btn auth-btn--danger"
+            className="inv-modal__delete"
             onClick={onConfirm}
             disabled={saving}
           >
@@ -449,14 +454,23 @@ function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
   return (
     <li className="inv-card">
       <div className="inv-card__main">
-        <div className="inv-card__info">
-          <p className="inv-card__name">{product.name}</p>
-          <p className="inv-card__meta">
-            {product.barcode}
-            {product.category && product.category !== 'Other' ? ` · ${product.category}` : ''}
-            {' · '}
-            {product.unit}
-          </p>
+        <div className="inv-card__left">
+          <div className="inv-card__icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+          </div>
+          <div className="inv-card__info">
+            <p className="inv-card__name">{product.name}</p>
+            <p className="inv-card__meta">
+              {product.barcode}
+              {product.category && product.category !== 'Other' ? ` · ${product.category}` : ''}
+              {' · '}
+              {product.unit}
+            </p>
+          </div>
         </div>
 
         <div className="inv-card__right">
@@ -472,9 +486,9 @@ function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
 
           {stock !== null && (
             <span
-              className={`inv-stock inv-stock--${stock === 0 ? 'out' : stock <= 5 ? 'low' : 'ok'}`}
+              className={`inv-badge inv-badge--${stock === 0 ? 'out' : stock <= 5 ? 'low' : 'ok'}`}
             >
-              {stock === 0 ? 'Out of stock' : `${stock} left`}
+              {stock === 0 ? 'Out of stock' : `${stock} in stock`}
             </span>
           )}
         </div>
@@ -496,18 +510,26 @@ function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
       <div className="inv-card__actions">
         <button
           type="button"
-          className="inv-action-btn"
+          className="inv-card__edit-btn"
           onClick={() => onEdit(product)}
           aria-label={`Edit ${product.name}`}
         >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
           Edit
         </button>
         <button
           type="button"
-          className="inv-action-btn inv-action-btn--danger"
+          className="inv-card__delete-btn"
           onClick={() => onDelete(product)}
           aria-label={`Delete ${product.name}`}
         >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
           Delete
         </button>
       </div>
@@ -546,6 +568,11 @@ export function InventoryPage() {
   const lowStock = products.filter(
     (p) => p.isTrackable && !p.variants.length && p.quantity > 0 && p.quantity <= 5,
   ).length
+  const categories = useMemo(() => {
+    const cats = new Set<string>()
+    products.forEach((p) => { if (p.category) cats.add(p.category) })
+    return cats.size
+  }, [products])
 
   // drawer actions
   function openAdd() {
@@ -591,84 +618,175 @@ export function InventoryPage() {
 
   return (
     <DashboardLayout>
-      <main className="inv-main">
-        {/* page title */}
-        <div className="bills-header">
-          <div>
-            <h1>Inventory</h1>
-            <p className="dash__sub">Manage your products and stock levels</p>
+      <main className="inv-page">
+        {/* Header */}
+        <div className="inv-page__header">
+          <div className="inv-page__header-left">
+            <h1 className="inv-page__title">Inventory</h1>
+            <p className="inv-page__subtitle">Manage your products and stock levels</p>
           </div>
-          <div className="db-topbar__right">
-            <button type="button" className="db-topbar__cta" onClick={openAdd}>
-              + Add product
+          <div className="inv-page__header-right">
+            <button type="button" className="inv-page__add-btn" onClick={openAdd}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add Product
             </button>
           </div>
         </div>
 
-        {/* summary cards */}
+        {/* Stats */}
         {!loading && !error && (
-          <div className="inv-stats">
-            <div className="inv-stat">
-              <span className="inv-stat__value">{totalProducts}</span>
-              <span className="inv-stat__label">Total products</span>
+          <div className="inv-page__stats">
+            <div className="inv-page__stat">
+              <div className="inv-page__stat-icon inv-page__stat-icon--blue">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                </svg>
+              </div>
+              <div className="inv-page__stat-content">
+                <span className="inv-page__stat-label">Total Products</span>
+                <span className="inv-page__stat-value">{totalProducts}</span>
+              </div>
             </div>
-            <div className="inv-stat inv-stat--warn">
-              <span className="inv-stat__value">{lowStock}</span>
-              <span className="inv-stat__label">Low stock</span>
+            <div className="inv-page__stat">
+              <div className="inv-page__stat-icon inv-page__stat-icon--indigo">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" />
+                  <line x1="8" y1="12" x2="21" y2="12" />
+                  <line x1="8" y1="18" x2="21" y2="18" />
+                  <line x1="3" y1="6" x2="3.01" y2="6" />
+                  <line x1="3" y1="12" x2="3.01" y2="12" />
+                  <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+              </div>
+              <div className="inv-page__stat-content">
+                <span className="inv-page__stat-label">Categories</span>
+                <span className="inv-page__stat-value">{categories}</span>
+              </div>
             </div>
-            <div className="inv-stat inv-stat--danger">
-              <span className="inv-stat__value">{outOfStock}</span>
-              <span className="inv-stat__label">Out of stock</span>
+            <div className="inv-page__stat">
+              <div className="inv-page__stat-icon inv-page__stat-icon--amber">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div className="inv-page__stat-content">
+                <span className="inv-page__stat-label">Low Stock</span>
+                <span className="inv-page__stat-value">{lowStock}</span>
+              </div>
+            </div>
+            <div className="inv-page__stat">
+              <div className="inv-page__stat-icon inv-page__stat-icon--red">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+              </div>
+              <div className="inv-page__stat-content">
+                <span className="inv-page__stat-label">Out of Stock</span>
+                <span className="inv-page__stat-value">{outOfStock}</span>
+              </div>
             </div>
           </div>
         )}
 
-        {/* search */}
-        <div className="inv-search-wrap">
-          <input
-            className="inv-search"
-            type="search"
-            placeholder="Search by name, barcode or category…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Search products"
-          />
-        </div>
+        {/* Search bar */}
+        {!loading && !error && products.length > 0 && (
+          <div className="inv-page__toolbar">
+            <div className="inv-page__search">
+              <svg className="inv-page__search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                className="inv-page__search-input"
+                type="search"
+                placeholder="Search by name, barcode or category…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search products"
+              />
+              {search && (
+                <button
+                  className="inv-page__search-clear"
+                  onClick={() => setSearch('')}
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <span className="inv-page__result-count">
+              {filtered.length} product{filtered.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        )}
 
-        {/* states */}
-        {loading && <p className="dash__hint">Loading inventory…</p>}
+        {/* Loading */}
+        {loading && (
+          <div className="inv-page__loading">
+            <div className="inv-page__spinner" />
+            <p>Loading inventory…</p>
+          </div>
+        )}
+
+        {/* Error */}
         {error && (
-          <div className="auth-msg auth-msg--error">
-            {error}
-            <button
-              type="button"
-              className="auth-link"
-              style={{ marginLeft: 12 }}
-              onClick={refresh}
-            >
+          <div className="inv-page__error">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+            <p>{error}</p>
+            <button type="button" className="inv-page__retry-btn" onClick={refresh}>
               Retry
             </button>
           </div>
         )}
 
+        {/* Empty state */}
         {!loading && !error && filtered.length === 0 && (
-          <div className="bills-empty">
+          <div className="inv-page__empty">
+            <div className="inv-page__empty-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                <line x1="12" y1="22.08" x2="12" y2="12" />
+              </svg>
+            </div>
             {products.length === 0 ? (
               <>
-                <p>No products yet.</p>
-                <button type="button" className="auth-btn" onClick={openAdd}>
+                <h3>No products yet</h3>
+                <p>Add your first product to start managing your inventory</p>
+                <button type="button" className="inv-page__empty-cta" onClick={openAdd}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
                   Add your first product
                 </button>
               </>
             ) : (
-              <p>No products match "{search}".</p>
+              <>
+                <h3>No results</h3>
+                <p>No products match "{search}"</p>
+                <button type="button" className="inv-page__empty-cta" onClick={() => setSearch('')}>
+                  Clear search
+                </button>
+              </>
             )}
           </div>
         )}
 
-        {/* list */}
+        {/* Product list */}
         {!loading && filtered.length > 0 && (
-          <ul className="inv-list">
+          <ul className="inv-page__list">
             {filtered.map((p) => (
               <ProductCard key={p._id} product={p} onEdit={openEdit} onDelete={setDeleteTarget} />
             ))}

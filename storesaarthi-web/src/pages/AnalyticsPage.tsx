@@ -35,7 +35,6 @@ function fmtDate(iso: string) {
 }
 
 function todayISO() {
-  // Return YYYY-MM-DD in local time
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -97,7 +96,12 @@ function PinGate({ hasPin, onUnlocked }: PinGateProps) {
   return (
     <div className="an-pin-wrap">
       <div className="an-pin-card">
-        <div className="an-pin-icon" aria-hidden="true">🔒</div>
+        <div className="an-pin-icon-wrap">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
         <h2>{hasPin ? 'Enter Analytics PIN' : 'Set up Analytics PIN'}</h2>
         <p className="an-pin-sub">
           {hasPin
@@ -123,8 +127,8 @@ function PinGate({ hasPin, onUnlocked }: PinGateProps) {
               {error}
             </p>
           )}
-          <button type="submit" className="auth-btn" disabled={busy || pin.length < 4}>
-            {busy ? 'Verifying…' : hasPin ? 'Unlock' : 'Set PIN & unlock'}
+          <button type="submit" className="an-pin-btn" disabled={busy || pin.length < 4}>
+            {busy ? 'Verifying…' : hasPin ? 'Unlock Analytics' : 'Set PIN & Unlock'}
           </button>
         </form>
       </div>
@@ -150,40 +154,62 @@ function SummaryCards({ summary, range }: SummaryCardsProps) {
   return (
     <div className="an-cards">
       <div className="an-card">
-        <span className="an-card__label">Total sales ({RANGE_LABELS[range]})</span>
-        <span className="an-card__value">{fmt(totalSales)}</span>
+        <div className="an-card__icon an-card__icon--blue">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23" />
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
+        </div>
+        <div className="an-card__content">
+          <span className="an-card__label">Total Sales · {RANGE_LABELS[range]}</span>
+          <span className="an-card__value">{fmt(totalSales)}</span>
+        </div>
       </div>
       <div className="an-card">
-        <span className="an-card__label">Collected</span>
-        <span className="an-card__value an-card__value--brand">
-          {fmt(debtVsSales.totalCollected)}
-        </span>
+        <div className="an-card__icon an-card__icon--green">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        </div>
+        <div className="an-card__content">
+          <span className="an-card__label">Collected</span>
+          <span className="an-card__value an-card__value--green">{fmt(debtVsSales.totalCollected)}</span>
+        </div>
       </div>
       <div className="an-card an-card--warn">
-        <span className="an-card__label">Pending / Debt</span>
-        <span className="an-card__value">{fmt(debtVsSales.totalDebt)}</span>
+        <div className="an-card__icon an-card__icon--amber">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+        </div>
+        <div className="an-card__content">
+          <span className="an-card__label">Pending / Debt</span>
+          <span className="an-card__value an-card__value--amber">{fmt(debtVsSales.totalDebt)}</span>
+        </div>
       </div>
       <div className="an-card">
-        <span className="an-card__label">Payment split</span>
-        <span className="an-card__value an-card__value--sm">
-          Cash {cashPct}% · UPI {upiPct}%
-        </span>
-        <div className="an-split-bar">
-          <div
-            className="an-split-bar__cash"
-            style={{ width: `${cashPct}%` }}
-            title={`Cash: ${fmt(paymentModes.CASH)}`}
-          />
-          <div
-            className="an-split-bar__upi"
-            style={{ width: `${upiPct}%` }}
-            title={`UPI: ${fmt(paymentModes.UPI)}`}
-          />
+        <div className="an-card__icon an-card__icon--indigo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+            <line x1="1" y1="10" x2="23" y2="10" />
+          </svg>
         </div>
-        <span className="an-card__sub">
-          Cash {fmt(paymentModes.CASH)} · UPI {fmt(paymentModes.UPI)}
-          {paymentModes.OTHERS > 0 ? ` · Others ${fmt(paymentModes.OTHERS)}` : ''}
-        </span>
+        <div className="an-card__content">
+          <span className="an-card__label">Payment Split</span>
+          <span className="an-card__value an-card__value--sm">
+            Cash {cashPct}% · UPI {upiPct}%
+          </span>
+          <div className="an-split-bar">
+            <div className="an-split-bar__cash" style={{ width: `${cashPct}%` }} title={`Cash: ${fmt(paymentModes.CASH)}`} />
+            <div className="an-split-bar__upi" style={{ width: `${upiPct}%` }} title={`UPI: ${fmt(paymentModes.UPI)}`} />
+          </div>
+          <span className="an-card__sub">
+            Cash {fmt(paymentModes.CASH)} · UPI {fmt(paymentModes.UPI)}
+            {paymentModes.OTHERS > 0 ? ` · Others ${fmt(paymentModes.OTHERS)}` : ''}
+          </span>
+        </div>
       </div>
     </div>
   )
@@ -200,7 +226,10 @@ function TopProducts({ products }: { products: AnalyticsProduct[] }) {
 
   return (
     <div className="an-section">
-      <h2 className="an-section__title">Top products</h2>
+      <div className="an-section__header">
+        <h2 className="an-section__title">Top Products</h2>
+        <span className="an-section__badge">{products.length} items</span>
+      </div>
       <ul className="an-product-list">
         {products.slice(0, 20).map((p) => {
           const isOpen = expanded === p.productId
@@ -208,11 +237,14 @@ function TopProducts({ products }: { products: AnalyticsProduct[] }) {
           return (
             <li key={p.productId} className="an-product-row">
               <div className="an-product-row__main">
+                <div className="an-product-row__rank">
+                  {products.indexOf(p) + 1}
+                </div>
                 <div className="an-product-row__info">
                   <span className="an-product-row__name">{p.name}</span>
                   <span className="an-product-row__qty">
                     {p.totalQuantity} {p.variants[0]?.unit ?? 'unit'}
-                    {p.variants.length > 1 ? ` across ${p.variants.length} variants` : ''}
+                    {p.variants.length > 1 ? ` · ${p.variants.length} variants` : ''}
                   </span>
                 </div>
                 <div className="an-product-row__right">
@@ -258,14 +290,26 @@ type DebtVs = { totalCollected: number; totalDebt: number; totalSales: number }
 
 function TrendList({ entries, label }: { entries: TrendEntry[]; label: string }) {
   if (entries.length === 0) return null
+  const maxSales = Math.max(...entries.map((e) => e.totalSales), 1)
+
   return (
     <div className="an-section">
-      <h2 className="an-section__title">Breakdown by {label}</h2>
+      <div className="an-section__header">
+        <h2 className="an-section__title">Breakdown by {label}</h2>
+      </div>
       <ul className="an-trend-list">
         {entries.map((e, i) => (
           <li key={i} className="an-trend-row">
-            <span className="an-trend-row__label">{e.label}</span>
-            <span className="an-trend-row__value">{fmt(e.totalSales)}</span>
+            <div className="an-trend-row__top">
+              <span className="an-trend-row__label">{e.label}</span>
+              <span className="an-trend-row__value">{fmt(e.totalSales)}</span>
+            </div>
+            <div className="an-trend-row__bar-bg">
+              <div
+                className="an-trend-row__bar-fill"
+                style={{ width: `${(e.totalSales / maxSales) * 100}%` }}
+              />
+            </div>
           </li>
         ))}
       </ul>
@@ -326,7 +370,6 @@ function PrintReport({ report, shopName, periodLabel }: PrintReportProps) {
   const { grandTotal: gt, rows, from, to } = report
   return (
     <div className="an-print-report" aria-hidden="true">
-      {/* header */}
       <div className="an-print-report__header">
         <h1>{shopName}</h1>
         <p className="an-print-report__subtitle">Sales Report — {periodLabel}</p>
@@ -335,7 +378,6 @@ function PrintReport({ report, shopName, periodLabel }: PrintReportProps) {
         </p>
       </div>
 
-      {/* grand total summary */}
       <div className="an-print-report__summary">
         <div className="an-print-report__summary-grid">
           <div>
@@ -365,7 +407,6 @@ function PrintReport({ report, shopName, periodLabel }: PrintReportProps) {
         </div>
       </div>
 
-      {/* detail table */}
       <table className="an-print-report__table">
         <thead>
           <tr>
@@ -477,26 +518,29 @@ export function AnalyticsPage() {
   return (
     <DashboardLayout>
       <main className="an-main">
-        {/* title */}
-        <div className="bills-header">
-          <div>
-            <h1>Analytics</h1>
-            <p className="dash__sub">{shop?.shopName}</p>
+        {/* Header */}
+        <div className="an-header">
+          <div className="an-header__left">
+            <h1 className="an-header__title">Analytics</h1>
+            <p className="an-header__subtitle">{shop?.shopName} · Performance insights</p>
           </div>
-          <div className="db-topbar__right">
+          <div className="an-header__actions">
             <button
               type="button"
-              className="db-topbar__cta"
-              style={{ background: 'transparent', color: '#374151', border: '1px solid #e5e7eb' }}
+              className="an-lock-btn"
               onClick={() => setUnlocked(false)}
               aria-label="Lock analytics"
             >
-              🔒 Lock
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              Lock
             </button>
           </div>
         </div>
 
-        {/* top-level tabs: overview / report */}
+        {/* Top-level tabs */}
         <div className="an-tabs" role="tablist" aria-label="Analytics sections">
           <button
             role="tab"
@@ -504,6 +548,9 @@ export function AnalyticsPage() {
             className={`an-tab${activeTab === 'overview' ? ' an-tab--active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
+            </svg>
             Overview
           </button>
           <button
@@ -512,6 +559,12 @@ export function AnalyticsPage() {
             className={`an-tab${activeTab === 'report' ? ' an-tab--active' : ''}`}
             onClick={() => setActiveTab('report')}
           >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
             Report
           </button>
         </div>
@@ -519,7 +572,7 @@ export function AnalyticsPage() {
         {/* ── OVERVIEW TAB ── */}
         {activeTab === 'overview' && (
           <>
-            {/* range pills */}
+            {/* Range pills */}
             <div className="an-range-pills" role="group" aria-label="Time range">
               {(Object.keys(RANGE_LABELS) as AnalyticsRange[]).map((r) => (
                 <button
@@ -534,12 +587,17 @@ export function AnalyticsPage() {
               ))}
             </div>
 
-            {/* date context for daily */}
+            {/* Date context for daily */}
             {range === 'daily' && dailyData?.date && (
               <p className="an-date-label">{fmtDate(dailyData.date)}</p>
             )}
 
-            {loading && <p className="dash__hint">Loading analytics…</p>}
+            {loading && (
+              <div className="an-loading">
+                <div className="an-loading__spinner" />
+                <span>Loading analytics…</span>
+              </div>
+            )}
             {error && <p className="auth-msg auth-msg--error">{error}</p>}
 
             {!loading && !error && data && (
@@ -551,20 +609,25 @@ export function AnalyticsPage() {
                 <TopProducts products={data.products} />
                 {data.biggestBill && (
                   <div className="an-section">
-                    <h2 className="an-section__title">Biggest bill this period</h2>
+                    <div className="an-section__header">
+                      <h2 className="an-section__title">Biggest Bill</h2>
+                    </div>
                     <div className="an-biggest-bill">
-                      <span className="an-biggest-bill__amount">
-                        {fmt(Number((data.biggestBill as Record<string, unknown>).totalAmount ?? 0))}
-                      </span>
-                      <span className="an-biggest-bill__meta">
-                        {(data.biggestBill as Record<string, unknown>).createdAt
-                          ? fmtDate(
-                              String(
-                                (data.biggestBill as Record<string, unknown>).createdAt,
-                              ),
-                            )
-                          : ''}
-                      </span>
+                      <div className="an-biggest-bill__icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      </div>
+                      <div className="an-biggest-bill__content">
+                        <span className="an-biggest-bill__amount">
+                          {fmt(Number((data.biggestBill as Record<string, unknown>).totalAmount ?? 0))}
+                        </span>
+                        <span className="an-biggest-bill__meta">
+                          {(data.biggestBill as Record<string, unknown>).createdAt
+                            ? fmtDate(String((data.biggestBill as Record<string, unknown>).createdAt))
+                            : 'This period'}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -572,7 +635,15 @@ export function AnalyticsPage() {
             )}
 
             {!loading && !error && data && data.totalSales === 0 && (
-              <p className="an-empty">No bills found for this period.</p>
+              <div className="an-empty-state">
+                <div className="an-empty-state__icon">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
+                  </svg>
+                </div>
+                <h3>No data yet</h3>
+                <p>No bills found for this period. Start billing to see insights here.</p>
+              </div>
             )}
           </>
         )}
@@ -581,72 +652,109 @@ export function AnalyticsPage() {
         {activeTab === 'report' && (
           <>
             <div className="an-report-controls">
-              <label className="inv-label" htmlFor="report-period">
-                Period
-              </label>
-              <select
-                id="report-period"
-                className="inv-input an-report-select"
-                value={reportPeriod}
-                onChange={(e) => setReportPeriod(e.target.value as ReportPeriod)}
-              >
-                {(Object.keys(REPORT_PERIOD_LABELS) as ReportPeriod[]).map((p) => (
-                  <option key={p} value={p}>
-                    {REPORT_PERIOD_LABELS[p]}
-                  </option>
-                ))}
-              </select>
+              <div className="an-report-controls__select-wrap">
+                <label className="an-report-controls__label" htmlFor="report-period">
+                  Period
+                </label>
+                <select
+                  id="report-period"
+                  className="an-report-select"
+                  value={reportPeriod}
+                  onChange={(e) => setReportPeriod(e.target.value as ReportPeriod)}
+                >
+                  {(Object.keys(REPORT_PERIOD_LABELS) as ReportPeriod[]).map((p) => (
+                    <option key={p} value={p}>
+                      {REPORT_PERIOD_LABELS[p]}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {report && !reportLoading && (
                 <button
                   type="button"
-                  className="auth-btn an-pdf-btn no-print"
+                  className="an-pdf-btn no-print"
                   onClick={handlePrintReport}
                   aria-label="Download report as PDF"
                 >
-                  ↓ Download PDF
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Download PDF
                 </button>
               )}
             </div>
 
-            {reportLoading && <p className="dash__hint">Generating report…</p>}
+            {reportLoading && (
+              <div className="an-loading">
+                <div className="an-loading__spinner" />
+                <span>Generating report…</span>
+              </div>
+            )}
             {reportError && <p className="auth-msg auth-msg--error">{reportError}</p>}
 
             {!reportLoading && !reportError && report && (
               <>
-                {/* grand total banner */}
+                {/* Grand total banner */}
                 <div className="an-report-banner no-print">
                   <div className="an-report-banner__cell">
-                    <span className="an-report-banner__label">Total sales</span>
-                    <span className="an-report-banner__value">
-                      {fmt(report.grandTotal.totalSales)}
-                    </span>
+                    <div className="an-report-banner__icon an-report-banner__icon--blue">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="an-report-banner__label">Total Sales</span>
+                      <span className="an-report-banner__value">{fmt(report.grandTotal.totalSales)}</span>
+                    </div>
                   </div>
                   <div className="an-report-banner__cell">
-                    <span className="an-report-banner__label">Collected</span>
-                    <span className="an-report-banner__value an-report-banner__value--brand">
-                      {fmt(report.grandTotal.collected)}
-                    </span>
+                    <div className="an-report-banner__icon an-report-banner__icon--green">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="an-report-banner__label">Collected</span>
+                      <span className="an-report-banner__value an-report-banner__value--green">{fmt(report.grandTotal.collected)}</span>
+                    </div>
                   </div>
                   <div className="an-report-banner__cell">
-                    <span className="an-report-banner__label">Debt</span>
-                    <span className="an-report-banner__value">
-                      {fmt(report.grandTotal.debt)}
-                    </span>
+                    <div className="an-report-banner__icon an-report-banner__icon--amber">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="an-report-banner__label">Debt</span>
+                      <span className="an-report-banner__value an-report-banner__value--amber">{fmt(report.grandTotal.debt)}</span>
+                    </div>
                   </div>
                   <div className="an-report-banner__cell">
-                    <span className="an-report-banner__label">Bills</span>
-                    <span className="an-report-banner__value">{report.grandTotal.billCount}</span>
+                    <div className="an-report-banner__icon an-report-banner__icon--indigo">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="an-report-banner__label">Bills</span>
+                      <span className="an-report-banner__value">{report.grandTotal.billCount}</span>
+                    </div>
                   </div>
                 </div>
 
                 <div className="an-report-meta no-print">
-                  {report.from} → {report.to}
+                  <span>{fmtDate(report.from)}</span>
+                  <span className="an-report-meta__arrow">→</span>
+                  <span>{fmtDate(report.to)}</span>
                 </div>
 
                 <ReportTable rows={report.rows} />
 
-                {/* hidden print-only PDF template */}
+                {/* Hidden print-only PDF template */}
                 <PrintReport
                   report={report}
                   shopName={shop?.shopName ?? 'My Store'}

@@ -88,6 +88,7 @@ export function BillDetailPage() {
         bill,
         shop?.shopName || 'StoreSaarthi',
         customerNameOnly(customer ?? null),
+        shop?.upiId || undefined,
       )
       const res = await printBill(billId, payload)
       setPrintMsg(res.message)
@@ -110,102 +111,189 @@ export function BillDetailPage() {
 
   return (
     <DashboardLayout>
-      <main className="bills-main">
-        {loading && <p className="dash__hint no-print">Loading bill…</p>}
+      <main className="bill-detail-page">
+        {/* Loading */}
+        {loading && (
+          <div className="bill-detail-page__loading no-print">
+            <div className="bill-detail-page__spinner" />
+            <p>Loading bill…</p>
+          </div>
+        )}
+
+        {/* Error */}
         {error && (
-          <p className="auth-msg auth-msg--error no-print">{error}</p>
+          <div className="bill-detail-page__error no-print">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+            <p>{error}</p>
+          </div>
         )}
 
         {bill && (
           <>
-            <div className="bills-header no-print">
-              <div>
-                <Link to="/bills" className="db-chart__link" style={{ display: 'inline-block', marginBottom: 6 }}>← Bills</Link>
-                <h1>Bill #{bill.dailyBillNumber}</h1>
-                <p className="dash__sub">{formatDate(bill.createdAt)}</p>
+            {/* Header */}
+            <div className="bill-detail-page__header no-print">
+              <div className="bill-detail-page__header-left">
+                <Link to="/bills" className="bill-detail-page__back">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                  Back to Bills
+                </Link>
+                <h1 className="bill-detail-page__title">Bill #{bill.dailyBillNumber}</h1>
+                <p className="bill-detail-page__date">{formatDate(bill.createdAt)}</p>
               </div>
-              <span
-                className={`bills-status bills-status--${bill.paymentStatus.toLowerCase()}`}
-              >
-                {bill.paymentStatus}
-              </span>
+              <div className="bill-detail-page__header-right">
+                <span className={`bill-detail-page__status bill-detail-page__status--${bill.paymentStatus.toLowerCase()}`}>
+                  {bill.paymentStatus}
+                </span>
+              </div>
             </div>
 
-            <div className="bill-print-actions no-print">
+            {/* Print actions */}
+            <div className="bill-detail-page__actions no-print">
               <button
                 type="button"
-                className="auth-btn"
+                className="bill-detail-page__print-btn"
                 disabled={printBusy}
                 onClick={() => void handleThermalPrint()}
               >
-                {printBusy ? 'Printing…' : 'Print receipt'}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 6 2 18 2 18 9" />
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                  <rect x="6" y="14" width="12" height="8" />
+                </svg>
+                {printBusy ? 'Printing…' : 'Print Receipt'}
               </button>
               <button
                 type="button"
-                className="auth-btn auth-btn--ghost"
+                className="bill-detail-page__browser-btn"
                 onClick={handleBrowserPrint}
               >
-                Browser print
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <line x1="3" y1="9" x2="21" y2="9" />
+                  <line x1="9" y1="21" x2="9" y2="9" />
+                </svg>
+                Browser Print
               </button>
             </div>
 
+            {/* Messages */}
             {printMsg && (
-              <p className="auth-msg auth-msg--info no-print">{printMsg}</p>
+              <div className="bill-detail-page__msg bill-detail-page__msg--success no-print">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" />
+                </svg>
+                {printMsg}
+              </div>
             )}
             {printErr && (
-              <p className="auth-msg auth-msg--error no-print">{printErr}</p>
+              <div className="bill-detail-page__msg bill-detail-page__msg--error no-print">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="15" y1="9" x2="9" y2="15" />
+                  <line x1="9" y1="9" x2="15" y2="15" />
+                </svg>
+                {printErr}
+              </div>
             )}
 
-            <div className="bill-detail no-print">
-              <section className="bill-detail__meta">
-                <div>
-                  <span>Customer</span>
-                  <strong>{customerLabel(customer ?? null)}</strong>
+            {/* Bill content */}
+            <div className="bill-detail-page__content no-print">
+              {/* Meta cards */}
+              <div className="bill-detail-page__meta">
+                <div className="bill-detail-page__meta-card">
+                  <div className="bill-detail-page__meta-icon bill-detail-page__meta-icon--blue">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                      <circle cx="12" cy="7" r="4" />
+                    </svg>
+                  </div>
+                  <div className="bill-detail-page__meta-info">
+                    <span className="bill-detail-page__meta-label">Customer</span>
+                    <strong className="bill-detail-page__meta-value">{customerLabel(customer ?? null)}</strong>
+                  </div>
                 </div>
-                <div>
-                  <span>Payment mode</span>
-                  <strong>{bill.paymentMode}</strong>
+                <div className="bill-detail-page__meta-card">
+                  <div className="bill-detail-page__meta-icon bill-detail-page__meta-icon--green">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+                      <line x1="1" y1="10" x2="23" y2="10" />
+                    </svg>
+                  </div>
+                  <div className="bill-detail-page__meta-info">
+                    <span className="bill-detail-page__meta-label">Payment Mode</span>
+                    <strong className="bill-detail-page__meta-value">{bill.paymentMode}</strong>
+                  </div>
                 </div>
-                <div>
-                  <span>Paid</span>
-                  <strong>{formatMoney(bill.paidAmount)}</strong>
+                <div className="bill-detail-page__meta-card">
+                  <div className="bill-detail-page__meta-icon bill-detail-page__meta-icon--indigo">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="12" y1="1" x2="12" y2="23" />
+                      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                  </div>
+                  <div className="bill-detail-page__meta-info">
+                    <span className="bill-detail-page__meta-label">Amount Paid</span>
+                    <strong className="bill-detail-page__meta-value">{formatMoney(bill.paidAmount)}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items section */}
+              <section className="bill-detail-page__items-section">
+                <div className="bill-detail-page__items-header">
+                  <h2>Items</h2>
+                  <span className="bill-detail-page__items-count">
+                    {(bill.items || []).length} item{(bill.items || []).length !== 1 ? 's' : ''}
+                  </span>
+                </div>
+                <div className="bill-detail-page__items-table">
+                  <div className="bill-detail-page__items-thead">
+                    <span>Product</span>
+                    <span>Qty</span>
+                    <span>Rate</span>
+                    <span>Amount</span>
+                  </div>
+                  <ul className="bill-detail-page__items-list">
+                    {(bill.items || []).map((item, index) => (
+                      <li key={`${item.productId}-${index}`} className="bill-detail-page__item-row">
+                        <span className="bill-detail-page__item-name">{item.name}</span>
+                        <span className="bill-detail-page__item-qty">
+                          {item.quantity} {item.unit !== 'unit' ? item.unit : ''}
+                        </span>
+                        <span className="bill-detail-page__item-rate">{formatMoney(item.price)}</span>
+                        <span className="bill-detail-page__item-total">{formatMoney(item.total)}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </section>
 
-              <section>
-                <h2>Items</h2>
-                <ul className="bill-items">
-                  {(bill.items || []).map((item, index) => (
-                    <li key={`${item.productId}-${index}`} className="bill-item">
-                      <div>
-                        <p className="bill-item__name">{item.name}</p>
-                        <p className="bill-item__meta">
-                          {item.quantity} {item.unit} ×{' '}
-                          {formatMoney(item.price)}
-                        </p>
-                      </div>
-                      <p className="bill-item__total">
-                        {formatMoney(item.total)}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-
-              <section className="create-bill__totals">
-                <div>
+              {/* Totals */}
+              <section className="bill-detail-page__totals">
+                <div className="bill-detail-page__totals-row">
                   <span>Subtotal</span>
                   <strong>{formatMoney(bill.subTotal)}</strong>
                 </div>
-                <div>
-                  <span>Discount</span>
-                  <strong>−{formatMoney(bill.discount)}</strong>
-                </div>
-                <div>
-                  <span>Tax ({bill.taxPercentage}%)</span>
-                  <strong>{formatMoney(taxAmount)}</strong>
-                </div>
-                <div className="create-bill__grand">
+                {Number(bill.discount) > 0 && (
+                  <div className="bill-detail-page__totals-row">
+                    <span>Discount</span>
+                    <strong className="bill-detail-page__totals-discount">−{formatMoney(bill.discount)}</strong>
+                  </div>
+                )}
+                {Number(bill.taxPercentage) > 0 && (
+                  <div className="bill-detail-page__totals-row">
+                    <span>Tax ({bill.taxPercentage}%)</span>
+                    <strong>{formatMoney(taxAmount)}</strong>
+                  </div>
+                )}
+                <div className="bill-detail-page__totals-row bill-detail-page__totals-grand">
                   <span>Total</span>
                   <strong>{formatMoney(bill.totalAmount)}</strong>
                 </div>

@@ -7,7 +7,6 @@ import {
   IconInventory,
   IconAnalytics,
   IconLedger,
-  IconPrintAgent,
   IconSettings,
   IconHelp,
   IconLogout,
@@ -22,7 +21,6 @@ const NAV_ITEMS = [
   { to: '/inventory', Icon: IconInventory, label: 'Inventory' },
   { to: '/ledger', Icon: IconLedger, label: 'Ledger' },
   { to: '/analytics', Icon: IconAnalytics, label: 'Analytics' },
-  { to: '/print-agent', Icon: IconPrintAgent, label: 'Print Agent' },
 ]
 
 const STORAGE_KEY = 'db-sidebar-collapsed'
@@ -61,9 +59,14 @@ export function DashboardSidebar({ active, onLogout }: Props) {
 
       {/* Logo */}
       <div className="db-sidebar__brand">
-        <span className="db-sidebar__logo" aria-hidden>
-          <IconDashboard />
-        </span>
+        <img
+          src="/logo.png"
+          alt="Store Saarthi"
+          className="db-sidebar__logo-img"
+        />
+        {!collapsed && (
+          <span className="db-sidebar__brand-name">Store Saarthi</span>
+        )}
       </div>
 
       {/* Primary nav */}

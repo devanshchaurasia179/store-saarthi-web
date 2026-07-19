@@ -8,7 +8,7 @@
     "start": "electron .",
     "dev": "electron . --dev",
     "server": "node index.js",
-     "build": "npx @yao-pkg/pkg@5 index.js --targets node20-win-x64 --output dist/print-agent-x64.exe",
+    "build": "npx @yao-pkg/pkg@5 index.js --targets node20-win-x64 --output dist/print-agent-x64.exe",
     "build:x64": "npx @yao-pkg/pkg@5 index.js --targets node20-win-x64 --output dist/print-agent-x64.exe",
     "build:all": "npm run build:x64",
     "dist": "electron-builder --win --x64",
@@ -16,12 +16,13 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@yao-pkg/pkg": "^5.15.0",
     "electron": "^29.1.0",
-    "electron-builder": "^24.13.3",
-    "@yao-pkg/pkg": "^5.15.0"
+    "electron-builder": "^24.13.3"
   },
   "pkg": {
     "targets": [

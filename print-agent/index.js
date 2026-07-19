@@ -22,6 +22,7 @@ const path       = require("path");
 const fs         = require("fs");
 const readline   = require("readline");
 const { exec }   = require("child_process");
+const QRCode     = require("qrcode");
 
 // ─── Path resolution (works both in dev and when packaged with pkg) ───────────
 //
@@ -225,17 +226,21 @@ async function runFirstTimeSetup() {
  * @param {string} txtPath      Full path to the temp .txt receipt file
  * @returns {string}
  */
-function buildPsScript(printerName, txtPath) {
+function buildPsScript(printerName, txtPath, qrImagePath) {
   // Escape single quotes for PowerShell string literals
   const safePrinter = printerName.replace(/'/g, "''");
   const safeTxt     = txtPath.replace(/\\/g, "\\\\");
   const COL         = 20;
+
+  // QR image path for PowerShell (only included if QR exists)
+  const safeQrPath  = qrImagePath ? qrImagePath.replace(/\\/g, "\\\\") : "";
 
   return `
 Add-Type -AssemblyName System.Drawing
 
 $printerName = '${safePrinter}'
 $filePath    = '${safeTxt}'
+$qrPath      = '${safeQrPath}'
 $colWidth    = ${COL}
 $lines       = [System.IO.File]::ReadAllLines($filePath)
 $idx         = 0
@@ -248,6 +253,12 @@ $fmt         = New-Object System.Drawing.StringFormat
 $fmt.Trimming    = [System.Drawing.StringTrimming]::None
 $fmt.FormatFlags = [System.Drawing.StringFormatFlags]::NoWrap
 
+# Load QR image if path provided
+$qrImage = $null
+if ($qrPath -and (Test-Path $qrPath)) {
+    $qrImage = [System.Drawing.Image]::FromFile($qrPath)
+}
+
 $pd = New-Object System.Drawing.Printing.PrintDocument
 $pd.PrinterSettings.PrinterName     = $printerName
 $pd.DefaultPageSettings.Margins     = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0)
@@ -256,8 +267,7 @@ $pd.add_PrintPage({
     param($sender, $e)
 
     $y     = [float]4
-    $pageH = [float]($e.MarginBounds.Height)
-    if ($pageH -le 0) { $pageH = [float]($e.PageBounds.Height) }
+    $pageH = [float]10000
     $pageW = [float]($e.MarginBounds.Width)
     if ($pageW -le 0) { $pageW = [float]($e.PageBounds.Width) }
 
@@ -270,6 +280,21 @@ $pd.add_PrintPage({
         $raw  = $lines[$idx]
         $font = $fontRegular
         $text = $raw
+
+        # Handle QR code marker line — draw the QR image instead of text
+        if ($raw.StartsWith('!QR!')) {
+            if ($qrImage) {
+                # Draw QR image centered on paper
+                $qrSize = [int][Math]::Min(100, $pageW - 20)
+                $qrX    = [int](($pageW - $qrSize) / 2)
+                $destRect = New-Object System.Drawing.Rectangle($qrX, [int]$y, $qrSize, $qrSize)
+                $e.Graphics.DrawImage($qrImage, $destRect)
+                $y += ($qrSize + 4)
+            }
+            $idx += 1
+            continue
+        }
+
         if ($raw.StartsWith('!H!')) {
             $font = $fontHeader
             $text = $raw.Substring(3)
@@ -293,6 +318,7 @@ $pd.Print()
 $fontRegular.Dispose()
 $fontBold.Dispose()
 $fontHeader.Dispose()
+if ($qrImage) { $qrImage.Dispose() }
 $pd.Dispose()
 `;
 }
@@ -302,11 +328,12 @@ $pd.Dispose()
  * Writes the receipt text + a generated .ps1 script to TEMP_DIR,
  * executes the script to print via .NET PrintDocument, then cleans up.
  *
- * @param {string} txtPath  Absolute path for the temp .txt file
- * @param {string} text     Plain-text receipt content
+ * @param {string} txtPath      Absolute path for the temp .txt file
+ * @param {string} text         Plain-text receipt content
+ * @param {string} [qrImagePath]  Optional QR code PNG path
  * @returns {Promise<void>}
  */
-function sendToPrinter(txtPath, text) {
+function sendToPrinter(txtPath, text, qrImagePath) {
   return new Promise((resolve, reject) => {
     const printerName = runtimeConfig.printerName;
 
@@ -319,14 +346,16 @@ function sendToPrinter(txtPath, text) {
     const ps1Path = txtPath.replace(/\.txt$/, ".ps1");
 
     const cleanup = () => {
-      for (const f of [txtPath, ps1Path]) {
+      const filesToClean = [txtPath, ps1Path];
+      if (qrImagePath) filesToClean.push(qrImagePath);
+      for (const f of filesToClean) {
         fs.unlink(f, (e) => {
           if (e) logger.warn(`Could not delete temp file ${f}: ${e.message}`);
         });
       }
     };
 
-    const psContent = buildPsScript(printerName, txtPath);
+    const psContent = buildPsScript(printerName, txtPath, qrImagePath || null);
 
     // Write .ps1 first, then .txt, then execute
     fs.writeFile(ps1Path, psContent, "utf8", (psErr) => {
@@ -396,6 +425,35 @@ try {
     lines.push("");
     return lines.join("\r\n");
   };
+}
+
+// ─── QR Code generation helper ────────────────────────────────────────────────
+/**
+ * Generates a UPI QR code as a PNG file.
+ *
+ * @param {string} upiId   The UPI ID (e.g. "shop@upi")
+ * @param {string} shopName  The shop name for the payee
+ * @param {number} amount  The amount to pay
+ * @param {string} outPath  File path to write the PNG
+ * @returns {Promise<string>} resolves with outPath on success
+ */
+async function generateUpiQr(upiId, shopName, amount, outPath) {
+  // Build standard UPI deep link URI
+  const params = new URLSearchParams({
+    pa: upiId,
+    pn: shopName || "StoreSaarthi",
+    am: String(amount || 0),
+    cu: "INR",
+  });
+  const upiUri = `upi://pay?${params.toString()}`;
+
+  await QRCode.toFile(outPath, upiUri, {
+    type: "png",
+    width: 150,          // 150px wide — compact QR for 58mm roll
+    margin: 1,
+    errorCorrectionLevel: "M",
+  });
+  return outPath;
 }
 
 // ─── Express app ──────────────────────────────────────────────────────────────
@@ -510,13 +568,29 @@ app.post("/print-bill", async (req, res) => {
     paid          : body.paid          ?? body.total ?? body.subtotal,
     paymentMode   : body.paymentMode   || null,
     paymentStatus : body.paymentStatus || "PAID",
+    upiId         : body.upiId         || null,
   };
 
-  const txtPath = path.join(TEMP_DIR, `bill-${Date.now()}.txt`);
+  const ts      = Date.now();
+  const txtPath = path.join(TEMP_DIR, `bill-${ts}.txt`);
+  let qrPath    = null;
+
   try {
+    // Generate UPI QR code if upiId is provided
+    if (receiptData.upiId) {
+      qrPath = path.join(TEMP_DIR, `qr-${ts}.png`);
+      await generateUpiQr(
+        receiptData.upiId,
+        receiptData.shopName,
+        receiptData.total,
+        qrPath,
+      );
+      logger.info(`UPI QR generated → ${qrPath}`);
+    }
+
     const text = buildReceiptText(receiptData);
     logger.info("Bill receipt text built");
-    await sendToPrinter(txtPath, text);
+    await sendToPrinter(txtPath, text, qrPath);
     return res.json({ success: true, message: "Bill printed successfully" });
   } catch (err) {
     logger.error(`/print-bill failed: ${err.message}`);
