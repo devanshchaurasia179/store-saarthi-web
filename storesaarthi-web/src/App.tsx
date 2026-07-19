@@ -10,6 +10,7 @@ import { InventoryPage } from './pages/InventoryPage'
 import { LedgerPage } from './pages/LedgerPage'
 import { LoginPage } from './pages/LoginPage'
 import { OnboardingPage } from './pages/OnboardingPage'
+import { HelpPage } from './pages/HelpPage'
 import { PrintAgentPage } from './pages/PrintAgentPage'
 import { ProfilePage } from './pages/ProfilePage'
 import './styles/print-agent.css'
@@ -34,6 +35,7 @@ export default function App() {
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/print-agent" element={<PrintAgentPage />} />
+            <Route path="/help" element={<HelpPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

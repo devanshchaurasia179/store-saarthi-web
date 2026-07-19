@@ -106,18 +106,18 @@ export function DashboardSidebar({ active, onLogout }: Props) {
           </Link>
         </li>
         <li>
-          <button
-            type="button"
-            className="db-sidebar__item db-sidebar__item--btn"
+          <Link
+            to="/help"
+            className={`db-sidebar__item${active === '/help' ? ' db-sidebar__item--active' : ''}`}
+            aria-current={active === '/help' ? 'page' : undefined}
             title={collapsed ? 'Help' : undefined}
             aria-label="Help"
-            disabled
           >
             <span className="db-sidebar__icon" aria-hidden>
               <IconHelp />
             </span>
             <span className="db-sidebar__label">Help</span>
-          </button>
+          </Link>
         </li>
         <li>
           <button

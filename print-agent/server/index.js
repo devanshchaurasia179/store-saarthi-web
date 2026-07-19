@@ -246,6 +246,61 @@ app.post("/print-bill", async (req, res) => {
   }
 });
 
+// ─── POST /print-kot ───────────────────────────────────────────────────────
+/**
+ * Print a Kitchen Order Ticket (KOT).
+ * Expected body:
+ * {
+ *   "shopName", "billNumber" (optional), "createdAt",
+ *   "items": [{ "name", "qty", "unit" }],
+ *   "customerName" (optional), "tableInfo" (optional)
+ * }
+ */
+app.post("/print-kot", async (req, res) => {
+  logger.info("--- /print-kot ---");
+  const body = req.body;
+
+  if (!body || !Array.isArray(body.items) || body.items.length === 0) {
+    return res.status(400).json({ success: false, error: "items array is required and must not be empty" });
+  }
+
+  // Build KOT text (simpler than a full receipt)
+  const lines = [];
+  lines.push("!H!--- KOT ---");
+  lines.push("");
+  lines.push("!B!" + (body.shopName || "StoreSaarthi"));
+  if (body.customerName) lines.push("Customer: " + body.customerName);
+  if (body.tableInfo) lines.push("Table: " + body.tableInfo);
+  lines.push("Date: " + new Date(body.createdAt || Date.now()).toLocaleString("en-IN"));
+  if (body.billNumber) lines.push("Bill #" + body.billNumber);
+  lines.push("--------------------");
+  lines.push("!B!Item             Qty");
+  lines.push("--------------------");
+
+  for (const item of body.items) {
+    const name = (item.name || "").substring(0, 14).padEnd(14);
+    const qty  = String(item.qty || 1) + (item.unit ? " " + item.unit : "");
+    lines.push(name + "  " + qty);
+  }
+
+  lines.push("--------------------");
+  lines.push("Total items: " + body.items.length);
+  lines.push("");
+  lines.push("!H!--- END KOT ---");
+  lines.push("");
+
+  const text = lines.join("\n");
+  const txtPath = path.join(TEMP_DIR, `kot-${Date.now()}.txt`);
+
+  try {
+    await sendToPrinter(txtPath, text);
+    return res.json({ success: true, message: "KOT printed successfully" });
+  } catch (err) {
+    logger.error("Print-kot failed: " + err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ─── 404 handler ──────────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ success: false, error: `${req.method} ${req.path} not found` });

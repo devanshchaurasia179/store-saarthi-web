@@ -3,7 +3,8 @@ import { ApiError } from '../api/client'
 import { createBill, fetchBills } from '../api/bills'
 import { fetchCustomers } from '../api/customers'
 import { fetchProducts } from '../api/products'
-import { billToPrintPayload, printBill } from '../api/print'
+import { billToPrintPayload, printBill, printKOTOnAgent } from '../api/print'
+import type { PrintKOTPayload } from '../api/print'
 import { useAuth } from '../context/AuthContext'
 import { DashboardLayout } from '../components/dashboard/DashboardLayout'
 import type {
@@ -277,7 +278,10 @@ export function CreateBillPage() {
     })
   }
 
-  async function handleSubmit(e: FormEvent) {
+  // Confirmation modal state
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+
+  function handleSubmitClick(e: FormEvent) {
     e.preventDefault()
     setError('')
 
@@ -285,6 +289,46 @@ export function CreateBillPage() {
       setError('Add at least one product to the bill')
       return
     }
+
+    // Show the confirmation modal with options
+    setShowConfirmModal(true)
+  }
+
+  async function handlePrintKOT() {
+    setShowConfirmModal(false)
+    setBusy(true)
+    setError('')
+
+    const customerName = customerId
+      ? customers.find((c) => c._id === customerId)?.name || null
+      : null
+
+    const kotPayload: PrintKOTPayload = {
+      shopName: shop?.shopName || 'StoreSaarthi',
+      billNumber: null,
+      createdAt: new Date().toISOString(),
+      items: cart.map((line) => ({
+        name: line.name,
+        qty: line.quantity,
+        unit: line.unit,
+      })),
+      customerName,
+    }
+
+    try {
+      await printKOTOnAgent(kotPayload)
+      setSuccessMsg('✓ KOT Printed')
+      setTimeout(() => setSuccessMsg(''), 3000)
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to print KOT')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleCreateBillAndPrint() {
+    setShowConfirmModal(false)
+    setError('')
 
     const paid = paidAmount === '' ? totalAmount : Math.max(Number(paidAmount) || 0, 0)
     const mode: PaymentMode =
@@ -336,6 +380,89 @@ export function CreateBillPage() {
         closeTab(activeTabId)
       } else {
         // Reset to a fresh tab instead of navigating away
+        const fresh = createEmptyTab(tabCounter)
+        setTabCounter((c) => c + 1)
+        setTabs([fresh])
+        setActiveTabId(fresh.id)
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to create bill')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handlePrintKOTAndCreateBill() {
+    setShowConfirmModal(false)
+    setError('')
+
+    const customerName = customerId
+      ? customers.find((c) => c._id === customerId)?.name || null
+      : null
+
+    // First print KOT
+    setBusy(true)
+    const kotPayload: PrintKOTPayload = {
+      shopName: shop?.shopName || 'StoreSaarthi',
+      billNumber: null,
+      createdAt: new Date().toISOString(),
+      items: cart.map((line) => ({
+        name: line.name,
+        qty: line.quantity,
+        unit: line.unit,
+      })),
+      customerName,
+    }
+
+    try {
+      await printKOTOnAgent(kotPayload)
+    } catch {
+      // KOT print failed silently — still proceed with bill creation
+    }
+
+    // Then create bill and print
+    const paid = paidAmount === '' ? totalAmount : Math.max(Number(paidAmount) || 0, 0)
+    const mode: PaymentMode =
+      paid <= 0 ? 'NONE' : paymentMode === 'NONE' ? 'CASH' : paymentMode
+
+    const items: CreateBillItem[] = cart.map((line) => ({
+      productId: line.productId,
+      quantity: line.quantity,
+      unit: line.unit,
+      ...(line.variantId ? { variantId: line.variantId } : {}),
+    }))
+
+    try {
+      const res = await createBill({
+        items,
+        discount: discountNum,
+        taxPercentage: taxNum,
+        customerId: customerId || null,
+        paidAmount: paid,
+        paymentMode: mode,
+      })
+
+      const bill = res.bill
+      const payload = billToPrintPayload(
+        bill,
+        shop?.shopName || 'StoreSaarthi',
+        customerName,
+        shop?.upiId || undefined,
+      )
+      let printed = false
+      try {
+        await printBill(bill._id, payload)
+        printed = true
+      } catch {
+        // Bill print failed silently
+      }
+
+      setSuccessMsg(printed ? '✓ KOT + Bill Printed' : '✓ Bill Created (KOT sent)')
+      setTimeout(() => setSuccessMsg(''), 3000)
+
+      if (tabs.length > 1) {
+        closeTab(activeTabId)
+      } else {
         const fresh = createEmptyTab(tabCounter)
         setTabCounter((c) => c + 1)
         setTabs([fresh])
@@ -509,7 +636,7 @@ export function CreateBillPage() {
         )}
 
         {!loading && (
-          <form className="create-bill" onSubmit={(e) => void handleSubmit(e)}>
+          <form className="create-bill" onSubmit={(e) => void handleSubmitClick(e)}>
             <section className="create-bill__products">
               <label className="create-bill__search">
                 <span className="create-bill__search-label">
@@ -803,6 +930,86 @@ export function CreateBillPage() {
           </form>
         )}
       </main>
+
+      {/* Create Bill Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="bill-confirm-overlay" onClick={() => setShowConfirmModal(false)}>
+          <div className="bill-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="bill-confirm-modal__header">
+              <h2>What would you like to do?</h2>
+              <button
+                type="button"
+                className="bill-confirm-modal__close"
+                onClick={() => setShowConfirmModal(false)}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="bill-confirm-modal__body">
+              <p className="bill-confirm-modal__hint">
+                Choose an action for this order ({cart.reduce((s, l) => s + l.quantity, 0)} items · {formatMoney(totalAmount)})
+              </p>
+              <div className="bill-confirm-modal__actions">
+                <button
+                  type="button"
+                  className="bill-confirm-modal__btn bill-confirm-modal__btn--kot"
+                  onClick={() => void handlePrintKOT()}
+                  disabled={busy}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <path d="M16 10a4 4 0 0 1-8 0" />
+                  </svg>
+                  Print KOT
+                  <span className="bill-confirm-modal__btn-desc">Send to kitchen only</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="bill-confirm-modal__btn bill-confirm-modal__btn--bill"
+                  onClick={() => void handleCreateBillAndPrint()}
+                  disabled={busy}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 6 2 18 2 18 9" />
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                    <rect x="6" y="14" width="12" height="8" />
+                  </svg>
+                  Create Bill & Print
+                  <span className="bill-confirm-modal__btn-desc">Create bill + print receipt</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="bill-confirm-modal__btn bill-confirm-modal__btn--both"
+                  onClick={() => void handlePrintKOTAndCreateBill()}
+                  disabled={busy}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="3" width="15" height="13" rx="2" />
+                    <polyline points="16 8 20 8 23 11 23 16 19 16" />
+                    <circle cx="5.5" cy="18.5" r="2.5" />
+                    <circle cx="18.5" cy="18.5" r="2.5" />
+                  </svg>
+                  Print KOT & Create Bill
+                  <span className="bill-confirm-modal__btn-desc">KOT to kitchen + create bill + print receipt</span>
+                </button>
+              </div>
+            </div>
+            <div className="bill-confirm-modal__footer">
+              <button
+                type="button"
+                className="bill-confirm-modal__cancel"
+                onClick={() => setShowConfirmModal(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bills History Modal */}
       {showHistory && (

@@ -54,6 +54,57 @@ const AGENT_BASE = import.meta.env.DEV
   ? '/print-agent'       // dev: goes through Vite proxy, no mixed-content
   : 'http://localhost:4000'  // prod: direct — works when page is HTTP
 
+export type PrintKOTPayload = {
+  shopName: string
+  billNumber: number | null
+  createdAt: string
+  items: Array<{
+    name: string
+    qty: number
+    unit?: string
+  }>
+  customerName: string | null
+  tableInfo?: string
+}
+
+/** Print KOT (Kitchen Order Ticket) via local print-agent. */
+export async function printKOTOnAgent(payload: PrintKOTPayload): Promise<{ success?: boolean; message?: string }> {
+  let res: Response
+  try {
+    res = await fetch(`${AGENT_BASE}/print-kot`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+  } catch (networkErr) {
+    const isHttps = window.location.protocol === 'https:'
+    if (isHttps) {
+      throw new ApiError(
+        0,
+        'Mixed content blocked: your browser cannot call the local print agent from an HTTPS page. ' +
+        'Open this app over HTTP on the shop PC (e.g. http://your-local-ip) instead of the HTTPS URL.',
+      )
+    }
+    throw new ApiError(0, 'Print agent is not running. Start print-agent.exe first.')
+  }
+
+  let data: { success?: boolean; message?: string; error?: string } = {}
+  try {
+    data = await res.json()
+  } catch {
+    /* ignore parse errors */
+  }
+
+  if (!res.ok || data.success === false) {
+    throw new ApiError(
+      res.status || 500,
+      data.error || data.message || 'KOT print failed',
+    )
+  }
+
+  return data
+}
+
 /** Thermal print via local print-agent on this PC. */
 export async function printBillOnAgent(payload: PrintBillPayload): Promise<{ success?: boolean; message?: string }> {
   let res: Response
