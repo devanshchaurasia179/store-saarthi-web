@@ -246,6 +246,53 @@ app.post("/print-bill", async (req, res) => {
   }
 });
 
+// ─── KOT helpers ──────────────────────────────────────────────────────────────
+const KOT_COL = 20;
+const KOT_QTY_W = 4;
+const KOT_DIVIDER = "-".repeat(KOT_COL);
+
+function kotCentre(text, width = KOT_COL) {
+  text = String(text);
+  if (text.length >= width) return text.substring(0, width);
+  const pad = Math.floor((width - text.length) / 2);
+  return (" ".repeat(pad) + text).padEnd(width);
+}
+
+function kotPadLine(text, width = KOT_COL) {
+  const s = String(text ?? "");
+  if (s.length >= width) return s.substring(0, width);
+  return s + " ".repeat(width - s.length);
+}
+
+function kotWrapText(text, width = KOT_COL) {
+  const raw = String(text || "").trim();
+  if (!raw) return [];
+  const words = raw.split(/\s+/);
+  const out = [];
+  let cur = "";
+  for (const word of words) {
+    if (word.length > width) {
+      if (cur) { out.push(cur); cur = ""; }
+      for (let i = 0; i < word.length; i += width) out.push(word.substring(i, i + width));
+      continue;
+    }
+    if (!cur) { cur = word; continue; }
+    if ((cur + " " + word).length <= width) { cur = cur + " " + word; }
+    else { out.push(cur); cur = word; }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+
+function kotItemLine(left, qtyStr, width = KOT_COL) {
+  const right = String(qtyStr).padStart(KOT_QTY_W);
+  const maxLeft = width - right.length - 1;
+  let l = String(left);
+  if (l.length > maxLeft) l = l.substring(0, maxLeft);
+  const spaces = Math.max(1, width - l.length - right.length);
+  return kotPadLine(l + " ".repeat(spaces) + right, width);
+}
+
 // ─── POST /print-kot ───────────────────────────────────────────────────────
 /**
  * Print a Kitchen Order Ticket (KOT).
@@ -264,32 +311,71 @@ app.post("/print-kot", async (req, res) => {
     return res.status(400).json({ success: false, error: "items array is required and must not be empty" });
   }
 
-  // Build KOT text (simpler than a full receipt)
+  // Build KOT receipt text
   const lines = [];
-  lines.push("!H!--- KOT ---");
-  lines.push("");
-  lines.push("!B!" + (body.shopName || "StoreSaarthi"));
-  if (body.customerName) lines.push("Customer: " + body.customerName);
-  if (body.tableInfo) lines.push("Table: " + body.tableInfo);
-  lines.push("Date: " + new Date(body.createdAt || Date.now()).toLocaleString("en-IN"));
-  if (body.billNumber) lines.push("Bill #" + body.billNumber);
-  lines.push("--------------------");
-  lines.push("!B!Item             Qty");
-  lines.push("--------------------");
+  const shop = String(body.shopName || "StoreSaarthi").trim();
 
-  for (const item of body.items) {
-    const name = (item.name || "").substring(0, 14).padEnd(14);
-    const qty  = String(item.qty || 1) + (item.unit ? " " + item.unit : "");
-    lines.push(name + "  " + qty);
+  const shopLines = kotWrapText(shop, KOT_COL);
+  if (shopLines.length === 0) shopLines.push("StoreSaarthi");
+  shopLines.forEach((ln) => lines.push(`!H!${kotCentre(ln)}`));
+
+  lines.push(`!B!${kotCentre("-- KOT --")}`);
+  lines.push(KOT_DIVIDER);
+
+  if (body.billNumber != null) {
+    lines.push(kotPadLine(`Bill #${body.billNumber}`));
   }
 
-  lines.push("--------------------");
-  lines.push("Total items: " + body.items.length);
-  lines.push("");
-  lines.push("!H!--- END KOT ---");
-  lines.push("");
+  const dt = body.createdAt ? new Date(body.createdAt) : new Date();
+  const dd = String(dt.getDate()).padStart(2, "0");
+  const mm = String(dt.getMonth() + 1).padStart(2, "0");
+  const yy = String(dt.getFullYear()).slice(-2);
+  let h = dt.getHours();
+  const min = String(dt.getMinutes()).padStart(2, "0");
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  lines.push(kotPadLine(`${dd}/${mm}/${yy}  ${h}:${min}${ap}`));
 
-  const text = lines.join("\n");
+  if (body.customerName) {
+    lines.push(kotPadLine("Customer:"));
+    kotWrapText(body.customerName, KOT_COL).forEach((ln) => lines.push(kotPadLine(ln)));
+  }
+  if (body.tableInfo) {
+    lines.push(kotPadLine(`Table: ${body.tableInfo}`));
+  }
+
+  lines.push(KOT_DIVIDER);
+  lines.push(kotItemLine("Item", "Qty"));
+  lines.push(KOT_DIVIDER);
+
+  // Format items like the bill — wrap long names (with variants) onto multiple lines
+  (body.items || []).forEach((item) => {
+    const name = String(item.name || "Item");
+    const qty = Number(item.qty) || 1;
+    const unit = item.unit ? ` ${item.unit}` : "";
+    const qtyStr = `${qty}${unit}`;
+
+    const nameLines = kotWrapText(name, KOT_COL);
+    nameLines.forEach((ln, i) => {
+      if (i === nameLines.length - 1) {
+        if (ln.length + 1 + qtyStr.length <= KOT_COL) {
+          lines.push(kotItemLine(ln, qtyStr));
+        } else {
+          lines.push(kotPadLine(ln));
+          lines.push(kotItemLine("", qtyStr));
+        }
+      } else {
+        lines.push(kotPadLine(ln));
+      }
+    });
+  });
+
+  lines.push(KOT_DIVIDER);
+  lines.push(kotCentre("** KITCHEN COPY **"));
+  // Extra feed lines so text clears the tear bar
+  for (let i = 0; i < 10; i++) lines.push(kotPadLine(""));
+
+  const text = lines.join("\r\n");
   const txtPath = path.join(TEMP_DIR, `kot-${Date.now()}.txt`);
 
   try {
