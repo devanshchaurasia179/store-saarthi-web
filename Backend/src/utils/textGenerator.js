@@ -235,6 +235,8 @@ export function buildReceiptText(data) {
   lines.push(centre("Visit again"));
   lines.push(padLine(""));
   lines.push(padLine(""));
+  lines.push(padLine(""));
+  lines.push(padLine(""));
 
   return lines.join("\r\n");
 }

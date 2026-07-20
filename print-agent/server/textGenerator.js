@@ -230,16 +230,8 @@ function buildReceiptText(data) {
 
   lines.push(centre("Thank you!"));
   lines.push(centre("Visit us again"));
-  lines.push(padLine(""));
-  lines.push(padLine(""));
-  lines.push(padLine(""));
-  lines.push(padLine(""));
-  lines.push(padLine(""));
-  lines.push(padLine(""));
-  lines.push(padLine(""));
-  lines.push(padLine(""));
-  lines.push(padLine(""));
-  lines.push(padLine(""));
+  // Extra feed lines so text clears the tear bar
+  for (let i = 0; i < 15; i++) lines.push(padLine(""));
 
   return lines.join("\r\n");
 }

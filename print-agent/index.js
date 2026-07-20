@@ -249,9 +249,6 @@ $fontRegular = New-Object System.Drawing.Font('Courier New', 10, [System.Drawing
 $fontBold    = New-Object System.Drawing.Font('Courier New', 10, [System.Drawing.FontStyle]::Bold)
 $fontHeader  = New-Object System.Drawing.Font('Courier New', 11, [System.Drawing.FontStyle]::Bold)
 $brush       = [System.Drawing.Brushes]::Black
-$fmt         = New-Object System.Drawing.StringFormat
-$fmt.Trimming    = [System.Drawing.StringTrimming]::None
-$fmt.FormatFlags = [System.Drawing.StringFormatFlags]::NoWrap
 
 # Load QR image if path provided
 $qrImage = $null
@@ -274,7 +271,6 @@ $pd.add_PrintPage({
     $sample   = '0' * $colWidth
     $contentW = [float]($e.Graphics.MeasureString($sample, $fontRegular).Width)
     $x        = [float]([Math]::Max(0, ($pageW - $contentW) / 2.0))
-    $maxW     = [float]($contentW + 2)
 
     while ($idx -lt $lines.Length) {
         $raw  = $lines[$idx]
@@ -303,8 +299,8 @@ $pd.add_PrintPage({
             $text = $raw.Substring(3)
         }
         $lh   = [float]($font.GetHeight($e.Graphics)) + 1
-        $rect = New-Object System.Drawing.RectangleF($x, $y, $maxW, $lh)
-        $e.Graphics.DrawString($text, $font, $brush, $rect, $fmt)
+        $pt   = New-Object System.Drawing.PointF($x, $y)
+        $e.Graphics.DrawString($text, $font, $brush, $pt)
         $y   += $lh
         $idx += 1
         if (($y + $lh) -gt ($pageH - 4)) {
@@ -312,6 +308,11 @@ $pd.add_PrintPage({
             break
         }
     }
+
+    # Force extra paper feed after content so tear bar doesn't clip last line
+    $feed = [float](($fontRegular.GetHeight($e.Graphics) + 1) * 12)
+    $pt2  = New-Object System.Drawing.PointF($x, ($y + $feed))
+    $e.Graphics.DrawString(' ', $fontRegular, $brush, $pt2)
 })
 
 $pd.Print()
