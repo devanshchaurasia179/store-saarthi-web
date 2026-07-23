@@ -260,17 +260,27 @@ $pd = New-Object System.Drawing.Printing.PrintDocument
 $pd.PrinterSettings.PrinterName     = $printerName
 $pd.DefaultPageSettings.Margins     = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0)
 
+# Use continuous (roll) paper: set a very long custom page size so content is never clipped.
+# Width: 203 = 58mm at 89 DPI (most 58mm thermal printers).  Height: large to avoid page breaks.
+try {
+    $pd.DefaultPageSettings.PaperSize = New-Object System.Drawing.Printing.PaperSize('Receipt', 203, 3276)
+} catch {}
+
 $pd.add_PrintPage({
     param($sender, $e)
 
-    $y     = [float]4
-    $pageH = [float]10000
-    $pageW = [float]($e.MarginBounds.Width)
-    if ($pageW -le 0) { $pageW = [float]($e.PageBounds.Width) }
+    $y     = [float]2
+    # Use the full page bounds width (not margin bounds) since margins are 0
+    $pageW = [float]($e.PageBounds.Width)
+    # For roll paper, use an effectively infinite height
+    $pageH = [float]($e.PageBounds.Height)
+    if ($pageH -le 0) { $pageH = [float]32000 }
 
     $sample   = '0' * $colWidth
     $contentW = [float]($e.Graphics.MeasureString($sample, $fontRegular).Width)
-    $x        = [float]([Math]::Max(0, ($pageW - $contentW) / 2.0))
+
+    # Start printing from X=0 (flush left, no indent) to use full paper width.
+    $x = [float]0
 
     while ($idx -lt $lines.Length) {
         $raw  = $lines[$idx]
@@ -280,8 +290,8 @@ $pd.add_PrintPage({
         # Handle QR code marker line — draw the QR image instead of text
         if ($raw.StartsWith('!QR!')) {
             if ($qrImage) {
-                # Draw QR image centered on paper
-                $qrSize = [int][Math]::Min(100, $pageW - 20)
+                # Draw QR image near left edge
+                $qrSize = [int][Math]::Min(100, $pageW - 10)
                 $qrX    = [int](($pageW - $qrSize) / 2)
                 $destRect = New-Object System.Drawing.Rectangle($qrX, [int]$y, $qrSize, $qrSize)
                 $e.Graphics.DrawImage($qrImage, $destRect)
@@ -310,7 +320,7 @@ $pd.add_PrintPage({
     }
 
     # Force extra paper feed after content so tear bar doesn't clip last line
-    $feed = [float](($fontRegular.GetHeight($e.Graphics) + 1) * 12)
+    $feed = [float](($fontRegular.GetHeight($e.Graphics) + 1) * 18)
     $pt2  = New-Object System.Drawing.PointF($x, ($y + $feed))
     $e.Graphics.DrawString(' ', $fontRegular, $brush, $pt2)
 })

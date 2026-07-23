@@ -7,6 +7,7 @@ import {
   IconInventory,
   IconAnalytics,
   IconLedger,
+  IconOnlineOrders,
   IconSettings,
   IconHelp,
   IconLogout,
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { to: '/bills', Icon: IconBills, label: 'Bills' },
   { to: '/bills/new', Icon: IconNewBill, label: 'New Bill' },
   { to: '/inventory', Icon: IconInventory, label: 'Inventory' },
+  { to: '/online-orders', Icon: IconOnlineOrders, label: 'Online Orders' },
   { to: '/ledger', Icon: IconLedger, label: 'Ledger' },
   { to: '/analytics', Icon: IconAnalytics, label: 'Analytics' },
 ]

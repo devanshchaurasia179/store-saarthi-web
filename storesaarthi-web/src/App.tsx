@@ -10,6 +10,7 @@ import { InventoryPage } from './pages/InventoryPage'
 import { LedgerPage } from './pages/LedgerPage'
 import { LoginPage } from './pages/LoginPage'
 import { OnboardingPage } from './pages/OnboardingPage'
+import { OnlineOrdersPage } from './pages/OnlineOrdersPage'
 import { HelpPage } from './pages/HelpPage'
 import { PrintAgentPage } from './pages/PrintAgentPage'
 import { ProfilePage } from './pages/ProfilePage'
@@ -31,6 +32,7 @@ export default function App() {
             <Route path="/bills/new" element={<CreateBillPage />} />
             <Route path="/bills/:billId" element={<BillDetailPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
+            <Route path="/online-orders" element={<OnlineOrdersPage />} />
             <Route path="/ledger" element={<LedgerPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/profile" element={<ProfilePage />} />

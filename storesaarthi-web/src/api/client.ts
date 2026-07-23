@@ -23,7 +23,7 @@ export class ApiError extends Error {
   }
 }
 
-const BASE_URL = 'https://store-saathi-api.vercel.app'
+const BASE_URL = 'http://localhost:5000'
 
 export async function apiFetch<T>(
   path: string,

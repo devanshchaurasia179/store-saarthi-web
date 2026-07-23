@@ -96,24 +96,30 @@ export async function getPublicShopProducts(req, res) {
     ]);
 
     // Map products for public consumption (hide internal fields)
-    const publicProducts = products.map((p) => ({
-      _id: p._id,
-      name: p.name,
-      category: p.category,
-      unit: p.unit,
-      price: p.price,
-      quantity: p.isTrackable ? p.quantity : null,
-      inStock: p.isTrackable ? p.quantity > 0 : true,
-      variants: (p.variants || [])
-        .filter((v) => v.isActive)
-        .map((v) => ({
-          _id: v._id,
-          name: v.name,
-          price: v.price,
-          quantity: p.isTrackable ? v.quantity : null,
-          inStock: p.isTrackable ? v.quantity > 0 : true,
-        })),
-    }));
+    const publicProducts = products.map((p) => {
+      const productPrice = typeof p.price === 'object' ? p.price?.sellingPrice : p.price;
+      return {
+        _id: p._id,
+        name: p.name,
+        category: p.category,
+        unit: p.unit,
+        price: productPrice ?? 0,
+        quantity: p.isTrackable ? p.quantity : null,
+        inStock: p.isTrackable ? p.quantity > 0 : true,
+        variants: (p.variants || [])
+          .filter((v) => v.isActive)
+          .map((v) => {
+            const variantPrice = typeof v.price === 'object' ? v.price?.sellingPrice : v.price;
+            return {
+              _id: v._id,
+              name: v.name,
+              price: variantPrice ?? 0,
+              quantity: p.isTrackable ? v.quantity : null,
+              inStock: p.isTrackable ? v.quantity > 0 : true,
+            };
+          }),
+      };
+    });
 
     res.status(200).json({
       success: true,
