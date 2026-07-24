@@ -56,6 +56,7 @@ export async function getPublicShopInfo(req, res) {
       shopObj.isOnlineOrderingEnabled = profile.isOnlineOrderingEnabled ?? true;
       shopObj.isDeliveryAvailable = profile.isDeliveryAvailable ?? true;
       shopObj.isPickupAvailable = profile.isPickupAvailable ?? false;
+      shopObj.isDineInAvailable = profile.isDineInAvailable ?? false;
       shopObj.acceptedPaymentMethods = profile.acceptedPaymentMethods || ['COD'];
       shopObj.upiId = profile.upiId || shopObj.upiId || '';
       shopObj.businessHours = profile.businessHours || { openTime: '09:00', closeTime: '21:00', offDays: [] };

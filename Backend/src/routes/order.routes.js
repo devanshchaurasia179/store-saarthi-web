@@ -2,6 +2,7 @@ import express from "express";
 import { protectCustomerRoute } from "../middleware/customerAuth.middleware.js";
 import {
   createOrder,
+  createDineInOrder,
   getOrderById,
   getCustomerOrders,
   cancelOrder,
@@ -10,8 +11,11 @@ import {
 const router = express.Router();
 
 /* ================= CUSTOMER ORDER APIs ================= */
-// All routes require customer authentication
 
+// Public route - dine-in orders don't require auth
+router.post("/dine-in", createDineInOrder);
+
+// Protected routes - require customer authentication
 router.post("/", protectCustomerRoute, createOrder);
 router.get("/", protectCustomerRoute, getCustomerOrders);
 router.get("/:id", protectCustomerRoute, getOrderById);

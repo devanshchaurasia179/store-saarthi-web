@@ -19,7 +19,7 @@ import { validateCreateOrder } from "../validators/order.validator.js";
 export async function createOrder(req, res) {
   try {
     const customerId = req.customer._id;
-    const { shop, items, address, paymentMethod, notes } = req.body;
+    const { shop, items, address, paymentMethod, notes, orderType, tableNumber } = req.body;
 
     /* ---------- VALIDATION ---------- */
     const errors = validateCreateOrder(req.body);
@@ -74,11 +74,22 @@ export async function createOrder(req, res) {
     }
 
     /* ---------- CREATE ORDER ---------- */
-    const order = await Order.create({
+    const orderData = {
       shop,
       customer: customerId,
       items: orderItems,
-      address: {
+      orderType: orderType || "delivery",
+      paymentMethod: paymentMethod || "COD",
+      notes: notes || "",
+      status: "pending",
+      totalAmount,
+    };
+
+    if (orderType === "dineIn") {
+      orderData.tableNumber = tableNumber;
+      orderData.address = null;
+    } else {
+      orderData.address = {
         label: address.label || "",
         fullAddress: address.fullAddress,
         houseNumber: address.houseNumber || "",
@@ -88,12 +99,10 @@ export async function createOrder(req, res) {
         pincode: address.pincode || "",
         latitude: address.latitude ?? null,
         longitude: address.longitude ?? null,
-      },
-      paymentMethod: paymentMethod || "COD",
-      notes: notes || "",
-      status: "pending",
-      totalAmount,
-    });
+      };
+    }
+
+    const order = await Order.create(orderData);
 
     // Populate shop info for response
     const populatedOrder = await Order.findById(order._id)
@@ -107,6 +116,96 @@ export async function createOrder(req, res) {
   } catch (error) {
     console.error("Create Order Error:", error.message);
     return res.status(500).json({ message: "Failed to create order" });
+  }
+}
+
+/* --------------------------------------------------
+   CREATE DINE-IN ORDER (PUBLIC - no auth required)
+   POST /api/orders/dine-in
+   Body: { shop, items, tableNumber, paymentMethod, notes }
+-------------------------------------------------- */
+export async function createDineInOrder(req, res) {
+  try {
+    const { shop, items, tableNumber, paymentMethod, notes } = req.body;
+
+    // Force orderType to dineIn
+    req.body.orderType = "dineIn";
+
+    /* ---------- VALIDATION ---------- */
+    const errors = validateCreateOrder(req.body);
+    if (errors.length > 0) {
+      return res.status(400).json({ message: errors[0] });
+    }
+
+    /* ---------- VERIFY SHOP EXISTS ---------- */
+    const shopExists = await Shop.findById(shop);
+    if (!shopExists) {
+      return res.status(404).json({ message: "Shop not found" });
+    }
+
+    /* ---------- VALIDATE PRODUCTS & CALCULATE PRICES ---------- */
+    const orderItems = [];
+    let totalAmount = 0;
+
+    for (const item of items) {
+      const product = await Product.findOne({
+        _id: item.product,
+        shopId: shop,
+        isActive: true,
+      }).select("name price quantity isTrackable");
+
+      if (!product) {
+        return res.status(404).json({
+          message: `Product not found: ${item.product}`,
+        });
+      }
+
+      if (product.isTrackable && product.quantity < item.quantity) {
+        return res.status(400).json({
+          message: `Insufficient stock for "${product.name}". Available: ${product.quantity}`,
+        });
+      }
+
+      const price = Number(product.price.sellingPrice);
+      const quantity = Number(item.quantity);
+      const subtotal = price * quantity;
+
+      orderItems.push({
+        product: product._id,
+        productName: product.name,
+        price,
+        quantity,
+        subtotal,
+      });
+
+      totalAmount += subtotal;
+    }
+
+    /* ---------- CREATE ORDER ---------- */
+    const order = await Order.create({
+      shop,
+      customer: null,
+      items: orderItems,
+      orderType: "dineIn",
+      tableNumber: tableNumber,
+      address: null,
+      paymentMethod: paymentMethod || "COD",
+      notes: notes || "",
+      status: "pending",
+      totalAmount,
+    });
+
+    const populatedOrder = await Order.findById(order._id)
+      .populate("shop", "shopName address")
+      .lean();
+
+    res.status(201).json({
+      success: true,
+      order: populatedOrder,
+    });
+  } catch (error) {
+    console.error("Create Dine-In Order Error:", error.message);
+    return res.status(500).json({ message: "Failed to create dine-in order" });
   }
 }
 

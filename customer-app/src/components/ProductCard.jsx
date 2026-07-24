@@ -39,6 +39,12 @@ const ProductCard = memo(function ProductCard({ product, shopId, shopName, disab
     )
   }
 
+  const handleToggle = () => {
+    if (hasVariants && !isOutOfStock) {
+      setExpanded(!expanded)
+    }
+  }
+
   const handleAddVariant = (variant) => {
     if (disabled) return
     const variantPrice = typeof variant.price === 'object' ? (variant.price?.sellingPrice ?? 0) : (Number(variant.price) || 0)
@@ -68,11 +74,7 @@ const ProductCard = memo(function ProductCard({ product, shopId, shopName, disab
     updateQuantity(product._id, quantity - 1)
   }
 
-  const handleToggle = () => {
-    if (hasVariants) {
-      setExpanded(!expanded)
-    }
-  }
+
 
   return (
     <div className={`bg-white rounded-xl border border-gray-100 overflow-hidden transition-shadow hover:shadow-sm ${isOutOfStock ? 'opacity-60' : ''}`}>
@@ -99,18 +101,20 @@ const ProductCard = memo(function ProductCard({ product, shopId, shopName, disab
             )}
           </div>
           <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-sm font-bold text-gray-900">
-              {formatPrice(displayPrice)}
-            </span>
-            {product.originalPrice && product.originalPrice > displayPrice && (
+            {(!isOutOfStock || displayPrice > 0) && (
+              <span className="text-sm font-bold text-gray-900">
+                {formatPrice(displayPrice)}
+              </span>
+            )}
+            {product.originalPrice && product.originalPrice > displayPrice && !isOutOfStock && (
               <span className="text-xs text-gray-400 line-through">
                 {formatPrice(product.originalPrice)}
               </span>
             )}
             {hasVariants && (
-              <span className="text-xs text-primary font-medium ml-1 flex items-center gap-0.5">
+              <span className={`text-xs font-medium ml-1 flex items-center gap-0.5 ${isOutOfStock ? 'text-gray-400' : 'text-primary'}`}>
                 {product.variants.length} options
-                {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                {!isOutOfStock && (expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
               </span>
             )}
           </div>
@@ -118,7 +122,19 @@ const ProductCard = memo(function ProductCard({ product, shopId, shopName, disab
 
         {/* Add / Quantity controls */}
         <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-          {quantity > 0 && !disabled && !hasVariants ? (
+          {isOutOfStock ? (
+            <motion.button
+              disabled
+              className="w-8 h-8 rounded-lg bg-gray-300 flex items-center justify-center shadow-sm opacity-50 cursor-not-allowed"
+              aria-label={`${product.name} is out of stock`}
+            >
+              {hasVariants ? (
+                <ChevronDown className="w-4 h-4 text-white" />
+              ) : (
+                <Plus className="w-4 h-4 text-white" />
+              )}
+            </motion.button>
+          ) : quantity > 0 && !disabled && !hasVariants ? (
             <QuantitySelector
               quantity={quantity}
               onIncrease={handleIncrease}
@@ -129,7 +145,7 @@ const ProductCard = memo(function ProductCard({ product, shopId, shopName, disab
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={handleAdd}
-              disabled={isOutOfStock || disabled}
+              disabled={disabled}
               className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center hover:bg-primary-light transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label={hasVariants ? `Show variants for ${product.name}` : `Add ${product.name} to cart`}
             >

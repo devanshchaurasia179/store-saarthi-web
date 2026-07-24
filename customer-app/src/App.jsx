@@ -10,6 +10,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 // Lazy loaded pages
 const ShopPage = lazy(() => import('./pages/ShopPage'))
 const CartPage = lazy(() => import('./pages/CartPage'))
+const OrderTypePage = lazy(() => import('./pages/OrderTypePage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AddressPage = lazy(() => import('./pages/AddressPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
@@ -30,6 +31,7 @@ function App() {
                 <Route index element={<ShopPage />} />
               </Route>
               <Route path="/cart" element={<CartPage />} />
+              <Route path="/order-type" element={<OrderTypePage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route
                 path="/address"
@@ -37,7 +39,7 @@ function App() {
               />
               <Route
                 path="/checkout"
-                element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>}
+                element={<CheckoutPage />}
               />
               <Route
                 path="/orders"
@@ -49,7 +51,7 @@ function App() {
               />
               <Route
                 path="/order-success"
-                element={<ProtectedRoute><OrderSuccessPage /></ProtectedRoute>}
+                element={<OrderSuccessPage />}
               />
               <Route
                 path="/profile"

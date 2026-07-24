@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import {
@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   Truck,
   AlertCircle,
+  UtensilsCrossed,
 } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -26,15 +27,27 @@ import AddressCard from '../components/AddressCard'
 import BottomSheet from '../components/BottomSheet'
 import { Skeleton } from '../components/Skeleton'
 
-const PAYMENT_METHODS = [
-  { id: 'cod', label: 'Cash on Delivery', icon: Banknote, enabled: true },
-  { id: 'upi', label: 'UPI Payment', icon: Smartphone, enabled: true },
+const ALL_PAYMENT_METHODS = [
+  { id: 'cod', backendKey: 'COD', label: 'Cash on Delivery', icon: Banknote },
+  { id: 'upi', backendKey: 'UPI', label: 'UPI Payment', icon: Smartphone },
 ]
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { items, shopId, shopName, subtotal, totalItems, clearCart } = useCart()
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
+
+  // Order type from OrderTypePage
+  const orderType = location.state?.orderType || 'delivery'
+  const tableNumber = location.state?.tableNumber || ''
+  const isDineIn = orderType === 'dineIn'
+
+  // Delivery orders require login
+  if (!isDineIn && !isAuthenticated) {
+    navigate('/login', { state: { from: '/checkout' }, replace: true })
+    return null
+  }
 
   // Fetch shop details to get UPI ID
   const { data: shopDetails } = useShopDetails(shopId)
@@ -45,10 +58,11 @@ export default function CheckoutPage() {
   const [showAddressPicker, setShowAddressPicker] = useState(false)
   const [error, setError] = useState('')
 
-  // Fetch addresses
+  // Fetch addresses (only for delivery orders)
   const { data: addresses = [], isLoading: addressesLoading } = useQuery({
     queryKey: ['addresses'],
     queryFn: () => addressService.getAddresses(),
+    enabled: !isDineIn,
     onSuccess: (data) => {
       // Auto-select default address
       if (!selectedAddress && data.length > 0) {
@@ -66,15 +80,31 @@ export default function CheckoutPage() {
     }
   }, [addresses, selectedAddress])
 
+  // Filter payment methods based on what the shop accepts
+  const acceptedMethods = shopDetails?.acceptedPaymentMethods || ['COD']
+  const availablePaymentMethods = ALL_PAYMENT_METHODS.filter((m) =>
+    acceptedMethods.includes(m.backendKey)
+  )
+
+  // Auto-select first available payment method if current selection is no longer valid
+  useMemo(() => {
+    const isCurrentMethodAvailable = availablePaymentMethods.some((m) => m.id === paymentMethod)
+    if (!isCurrentMethodAvailable && availablePaymentMethods.length > 0) {
+      setPaymentMethod(availablePaymentMethods[0].id)
+    }
+  }, [availablePaymentMethods, paymentMethod])
+
   // Delivery calculation from backend shop settings
   const shopDeliveryCharge = shopDetails?.deliveryCharges ?? 30
   const shopFreeDeliveryAbove = shopDetails?.freeDeliveryAbove ?? 0
-  const deliveryCharge = (shopFreeDeliveryAbove > 0 && subtotal >= shopFreeDeliveryAbove) ? 0 : shopDeliveryCharge
+  const deliveryCharge = isDineIn ? 0 : ((shopFreeDeliveryAbove > 0 && subtotal >= shopFreeDeliveryAbove) ? 0 : shopDeliveryCharge)
   const grandTotal = subtotal + deliveryCharge
 
   // Place order mutation
   const orderMutation = useMutation({
-    mutationFn: (orderData) => orderService.createOrder(orderData),
+    mutationFn: (orderData) => isDineIn
+      ? orderService.createDineInOrder(orderData)
+      : orderService.createOrder(orderData),
     onSuccess: (res) => {
       const orderId = res.data.order?._id || res.data.orderId
       const orderNumber = res.data.order?.orderNumber || res.data.orderNumber
@@ -94,7 +124,7 @@ export default function CheckoutPage() {
 
       clearCart()
       navigate('/order-success', {
-        state: { orderId, orderNumber },
+        state: { orderId, orderNumber, estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '' },
         replace: true,
       })
     },
@@ -116,7 +146,7 @@ export default function CheckoutPage() {
       return
     }
 
-    if (!selectedAddress) {
+    if (!isDineIn && !selectedAddress) {
       setError('Please select a delivery address')
       return
     }
@@ -139,6 +169,8 @@ export default function CheckoutPage() {
 
     const orderData = {
       shop: shopId,
+      orderType: isDineIn ? 'dineIn' : 'delivery',
+      ...(isDineIn && { tableNumber }),
       items: items.map((item) => {
         // Variant items have id format: "productId_variantId"
         const parts = item.id.split('_')
@@ -150,15 +182,17 @@ export default function CheckoutPage() {
           quantity: item.quantity,
         }
       }),
-      address: {
-        label: selectedAddress.label,
-        fullAddress: selectedAddress.fullAddress,
-        houseNumber: selectedAddress.houseNumber || '',
-        landmark: selectedAddress.landmark || '',
-        city: selectedAddress.city || '',
-        state: selectedAddress.state || '',
-        pincode: selectedAddress.pincode || '',
-      },
+      ...(!isDineIn && {
+        address: {
+          label: selectedAddress.label,
+          fullAddress: selectedAddress.fullAddress,
+          houseNumber: selectedAddress.houseNumber || '',
+          landmark: selectedAddress.landmark || '',
+          city: selectedAddress.city || '',
+          state: selectedAddress.state || '',
+          pincode: selectedAddress.pincode || '',
+        },
+      }),
       paymentMethod: paymentMethod === 'cod' ? 'COD' : 'UPI',
       notes: orderNotes.trim(),
     }
@@ -239,7 +273,23 @@ export default function CheckoutPage() {
         </div>
       </Section>
 
-      {/* Delivery Address */}
+      {/* Order Type Badge */}
+      {isDineIn && (
+        <div className="mb-5">
+          <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+              <UtensilsCrossed className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Dine In</p>
+              <p className="text-xs text-amber-600">Table No. {tableNumber}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delivery Address (only for delivery orders) */}
+      {!isDineIn && (
       <Section title="Delivery Address" icon={MapPin}>
         {addressesLoading ? (
           <Skeleton className="w-full h-20 rounded-xl" />
@@ -274,65 +324,67 @@ export default function CheckoutPage() {
           </button>
         )}
       </Section>
+      )}
 
       {/* Payment Method */}
       <Section title="Payment Method" icon={CreditCard}>
         <div className="space-y-2.5">
-          {PAYMENT_METHODS.map((method) => {
-            const Icon = method.icon
-            const isSelected = paymentMethod === method.id
-            const isUpiUnavailable = method.id === 'upi' && !shopDetails?.upiId
-            const disabled = !method.enabled || isUpiUnavailable
-            return (
-              <button
-                key={method.id}
-                disabled={disabled}
-                onClick={() => !disabled && setPaymentMethod(method.id)}
-                className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left ${
-                  isSelected
-                    ? 'border-primary bg-primary-50/40'
-                    : !disabled
-                    ? 'border-gray-100 hover:border-gray-200 bg-white'
-                    : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
-                }`}
-              >
-                <div
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                    isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'
+          {availablePaymentMethods.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-2">
+              No payment methods available for this shop
+            </p>
+          ) : (
+            availablePaymentMethods.map((method) => {
+              const Icon = method.icon
+              const isSelected = paymentMethod === method.id
+              const isUpiUnavailable = method.id === 'upi' && !shopDetails?.upiId
+              const disabled = isUpiUnavailable
+              return (
+                <button
+                  key={method.id}
+                  disabled={disabled}
+                  onClick={() => !disabled && setPaymentMethod(method.id)}
+                  className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left ${
+                    isSelected
+                      ? 'border-primary bg-primary-50/40'
+                      : !disabled
+                      ? 'border-gray-100 hover:border-gray-200 bg-white'
+                      : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
                   }`}
                 >
-                  <Icon className="w-4.5 h-4.5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-gray-800">
-                    {method.label}
-                  </span>
-                  {method.id === 'upi' && shopDetails?.upiId && (
-                    <p className="text-xs text-gray-400 truncate mt-0.5">
-                      Pay to: {shopDetails.upiId}
-                    </p>
-                  )}
-                  {isUpiUnavailable && (
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      Not available for this shop
-                    </p>
-                  )}
-                </div>
-                {method.badge && (
-                  <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
-                    {method.badge}
-                  </span>
-                )}
-                {isSelected && (
-                  <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
+                  <div
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                      isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    <Icon className="w-4.5 h-4.5" />
                   </div>
-                )}
-              </button>
-            )
-          })}
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-gray-800">
+                      {method.label}
+                    </span>
+                    {method.id === 'upi' && shopDetails?.upiId && (
+                      <p className="text-xs text-gray-400 truncate mt-0.5">
+                        Pay to: {shopDetails.upiId}
+                      </p>
+                    )}
+                    {isUpiUnavailable && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        UPI not configured for this shop
+                      </p>
+                    )}
+                  </div>
+                  {isSelected && (
+                    <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
+              )
+            })
+          )}
         </div>
       </Section>
 
@@ -348,18 +400,25 @@ export default function CheckoutPage() {
       </Section>
 
       {/* Bill Summary */}
-      <Section title="Bill Summary" icon={Truck}>
+      <Section title="Bill Summary" icon={isDineIn ? UtensilsCrossed : Truck}>
         <div className="space-y-2.5">
           <BillRow label="Subtotal" value={formatPrice(subtotal)} />
-          <BillRow
-            label="Delivery"
-            value={deliveryCharge === 0 ? 'FREE' : formatPrice(deliveryCharge)}
-            valueClass={deliveryCharge === 0 ? 'text-green-600' : ''}
-          />
-          {shopFreeDeliveryAbove > 0 && deliveryCharge > 0 && (
-            <p className="text-xs text-gray-400">
-              Free delivery on orders above {formatPrice(shopFreeDeliveryAbove)}
-            </p>
+          {!isDineIn && (
+            <>
+              <BillRow
+                label="Delivery"
+                value={deliveryCharge === 0 ? 'FREE' : formatPrice(deliveryCharge)}
+                valueClass={deliveryCharge === 0 ? 'text-green-600' : ''}
+              />
+              {shopFreeDeliveryAbove > 0 && deliveryCharge > 0 && (
+                <p className="text-xs text-gray-400">
+                  Free delivery on orders above {formatPrice(shopFreeDeliveryAbove)}
+                </p>
+              )}
+            </>
+          )}
+          {isDineIn && (
+            <BillRow label="Delivery" value="N/A (Dine In)" valueClass="text-gray-400" />
           )}
           <div className="pt-2.5 mt-2.5 border-t border-gray-100 flex justify-between">
             <span className="text-base font-bold text-gray-900">Total</span>
@@ -391,7 +450,7 @@ export default function CheckoutPage() {
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={handlePlaceOrder}
-              disabled={orderMutation.isPending || !selectedAddress}
+              disabled={orderMutation.isPending || (!isDineIn && !selectedAddress)}
               className="flex items-center gap-2 px-8 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
             >
               {orderMutation.isPending ? (

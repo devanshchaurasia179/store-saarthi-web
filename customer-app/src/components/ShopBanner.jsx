@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Store, Star, Clock, MapPin, Navigation, Truck, IndianRupee } from 'lucide-react'
+import { Store, Star, Clock, MapPin, Navigation, Truck, IndianRupee, Phone } from 'lucide-react'
 import Badge from './Badge'
 
 /**
@@ -135,6 +135,17 @@ export default function ShopBanner({ shop, distance }) {
                 )}
               </span>
             </div>
+          )}
+
+          {/* Call Owner Button */}
+          {shop.mobileNumber && (
+            <a
+              href={`tel:${shop.mobileNumber}`}
+              className="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 bg-primary/10 text-primary text-xs font-medium rounded-full hover:bg-primary/20 transition-colors"
+            >
+              <Phone className="w-3.5 h-3.5" />
+              Call Owner
+            </a>
           )}
         </div>
       </div>

@@ -103,6 +103,7 @@ export async function createOnlineProfile(req, res) {
       deliverySlots,
       isDeliveryAvailable,
       isPickupAvailable,
+      isDineInAvailable,
       acceptedPaymentMethods,
       upiId,
       businessHours,
@@ -134,6 +135,7 @@ export async function createOnlineProfile(req, res) {
       deliverySlots: deliverySlots || [],
       isDeliveryAvailable: isDeliveryAvailable ?? true,
       isPickupAvailable: isPickupAvailable ?? false,
+      isDineInAvailable: isDineInAvailable ?? false,
       acceptedPaymentMethods: acceptedPaymentMethods || ["COD"],
       upiId: upiId || "",
       businessHours: businessHours || {},
@@ -186,6 +188,7 @@ export async function updateOnlineProfile(req, res) {
       "isOnlineOrderingEnabled",
       "isDeliveryAvailable",
       "isPickupAvailable",
+      "isDineInAvailable",
       "acceptedPaymentMethods",
       "upiId",
       "businessHours",
@@ -248,7 +251,7 @@ export async function getPublicOnlineProfile(req, res) {
 
     const profile = await OnlineProfile.findOne({ shop: shopId })
       .select(
-        "storeName ownerName storeDescription storeLogo storeBanner mobileNumber whatsappNumber address deliveryCharges freeDeliveryAbove minimumOrderAmount deliveryRadius estimatedDeliveryTime deliverySlots isOnlineOrderingEnabled isDeliveryAvailable isPickupAvailable acceptedPaymentMethods upiId businessHours isStoreOnline"
+        "storeName ownerName storeDescription storeLogo storeBanner mobileNumber whatsappNumber address deliveryCharges freeDeliveryAbove minimumOrderAmount deliveryRadius estimatedDeliveryTime deliverySlots isOnlineOrderingEnabled isDeliveryAvailable isPickupAvailable isDineInAvailable acceptedPaymentMethods upiId businessHours isStoreOnline"
       )
       .lean();
 

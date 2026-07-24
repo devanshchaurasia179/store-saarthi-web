@@ -74,8 +74,20 @@ const orderSchema = new mongoose.Schema(
     customer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "OnlineCustomer",
-      required: true,
+      default: null,
       index: true,
+    },
+
+    orderType: {
+      type: String,
+      enum: ["delivery", "dineIn"],
+      default: "delivery",
+    },
+
+    tableNumber: {
+      type: String,
+      trim: true,
+      default: "",
     },
 
     items: {
@@ -89,7 +101,7 @@ const orderSchema = new mongoose.Schema(
 
     address: {
       type: orderAddressSchema,
-      required: true,
+      default: null,
     },
 
     paymentMethod: {

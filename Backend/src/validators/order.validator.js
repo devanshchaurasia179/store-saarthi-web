@@ -9,7 +9,7 @@
 export function validateCreateOrder(body) {
   const errors = [];
 
-  const { shop, items, address, paymentMethod } = body;
+  const { shop, items, address, paymentMethod, orderType, tableNumber } = body;
 
   // Shop
   if (!shop) {
@@ -41,20 +41,27 @@ export function validateCreateOrder(body) {
     }
   }
 
-  // Address
-  if (!address || !address.fullAddress) {
-    errors.push("address.fullAddress is required");
-  }
-
-  if (address) {
-    if (address.latitude !== undefined && address.latitude !== null) {
-      if (typeof address.latitude !== "number" || address.latitude < -90 || address.latitude > 90) {
-        errors.push("address.latitude must be between -90 and 90");
-      }
+  // Dine-in: require tableNumber, skip address
+  if (orderType === "dineIn") {
+    if (!tableNumber || !tableNumber.trim()) {
+      errors.push("tableNumber is required for dine-in orders");
     }
-    if (address.longitude !== undefined && address.longitude !== null) {
-      if (typeof address.longitude !== "number" || address.longitude < -180 || address.longitude > 180) {
-        errors.push("address.longitude must be between -180 and 180");
+  } else {
+    // Delivery: require address
+    if (!address || !address.fullAddress) {
+      errors.push("address.fullAddress is required");
+    }
+
+    if (address) {
+      if (address.latitude !== undefined && address.latitude !== null) {
+        if (typeof address.latitude !== "number" || address.latitude < -90 || address.latitude > 90) {
+          errors.push("address.latitude must be between -90 and 90");
+        }
+      }
+      if (address.longitude !== undefined && address.longitude !== null) {
+        if (typeof address.longitude !== "number" || address.longitude < -180 || address.longitude > 180) {
+          errors.push("address.longitude must be between -180 and 180");
+        }
       }
     }
   }

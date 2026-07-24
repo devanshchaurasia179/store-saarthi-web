@@ -5,7 +5,7 @@ import { useCart } from '../contexts/CartContext'
 
 export default function OrderSuccessPage() {
   const location = useLocation()
-  const { orderId } = location.state || {}
+  const { orderId, estimatedDeliveryTime } = location.state || {}
   const { shopId, shopName } = useCart()
 
   return (
@@ -90,7 +90,7 @@ export default function OrderSuccessPage() {
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Estimated Delivery</span>
-            <span className="font-medium text-gray-800">25-40 min</span>
+            <span className="font-medium text-gray-800">{estimatedDeliveryTime || '25-40 min'}</span>
           </div>
         </div>
       </motion.div>

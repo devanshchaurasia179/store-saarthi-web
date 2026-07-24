@@ -150,6 +150,11 @@ const onlineProfileSchema = new mongoose.Schema(
       default: false,
     },
 
+    isDineInAvailable: {
+      type: Boolean,
+      default: true,
+    },
+
     acceptedPaymentMethods: {
       type: [String],
       enum: ["COD", "UPI", "ONLINE"],

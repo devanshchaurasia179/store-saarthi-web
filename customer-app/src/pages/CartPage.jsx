@@ -188,7 +188,7 @@ export default function CartPage() {
             </div>
             <motion.button
               whileTap={{ scale: 0.97 }}
-              onClick={() => navigate('/checkout')}
+              onClick={() => navigate('/order-type')}
               className="flex items-center gap-2 px-8 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-light transition-colors shadow-lg shadow-primary/20"
             >
               Proceed to Checkout
