@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
+import { useShopDetails } from '../hooks/useShop'
 import { addressService } from '../services/addressService'
 import { orderService } from '../services/orderService'
 import { formatPrice } from '../utils/formatters'
@@ -28,13 +29,16 @@ import { Skeleton } from '../components/Skeleton'
 
 const PAYMENT_METHODS = [
   { id: 'cod', label: 'Cash on Delivery', icon: Banknote, enabled: true },
-  { id: 'upi', label: 'UPI Payment', icon: Smartphone, enabled: false, badge: 'Coming Soon' },
+  { id: 'upi', label: 'UPI Payment', icon: Smartphone, enabled: true },
 ]
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const { items, shopId, shopName, subtotal, totalItems, clearCart } = useCart()
   const { user } = useAuth()
+
+  // Fetch shop details to get UPI ID
+  const { data: shopDetails } = useShopDetails(shopId)
 
   const [selectedAddress, setSelectedAddress] = useState(null)
   const [paymentMethod, setPaymentMethod] = useState('cod')
@@ -71,12 +75,23 @@ export default function CheckoutPage() {
   const orderMutation = useMutation({
     mutationFn: (orderData) => orderService.createOrder(orderData),
     onSuccess: (res) => {
+      const orderId = res.data.order?._id || res.data.orderId
+      const orderNumber = res.data.order?.orderNumber || res.data.orderNumber
+
+      // If UPI selected, open UPI payment intent
+      if (paymentMethod === 'upi' && shopDetails?.upiId) {
+        const upiLink = buildUpiLink({
+          upiId: shopDetails.upiId,
+          payeeName: shopName,
+          amount: grandTotal,
+          orderId: orderNumber || orderId,
+        })
+        window.location.href = upiLink
+      }
+
       clearCart()
       navigate('/order-success', {
-        state: {
-          orderId: res.data.order?._id || res.data.orderId,
-          orderNumber: res.data.order?.orderNumber || res.data.orderNumber,
-        },
+        state: { orderId, orderNumber },
         replace: true,
       })
     },
@@ -95,6 +110,11 @@ export default function CheckoutPage() {
 
     if (items.length === 0) {
       setError('Your cart is empty')
+      return
+    }
+
+    if (paymentMethod === 'upi' && !shopDetails?.upiId) {
+      setError('This shop has not set up UPI payments yet. Please choose Cash on Delivery.')
       return
     }
 
@@ -235,15 +255,17 @@ export default function CheckoutPage() {
           {PAYMENT_METHODS.map((method) => {
             const Icon = method.icon
             const isSelected = paymentMethod === method.id
+            const isUpiUnavailable = method.id === 'upi' && !shopDetails?.upiId
+            const disabled = !method.enabled || isUpiUnavailable
             return (
               <button
                 key={method.id}
-                disabled={!method.enabled}
-                onClick={() => method.enabled && setPaymentMethod(method.id)}
+                disabled={disabled}
+                onClick={() => !disabled && setPaymentMethod(method.id)}
                 className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left ${
                   isSelected
                     ? 'border-primary bg-primary-50/40'
-                    : method.enabled
+                    : !disabled
                     ? 'border-gray-100 hover:border-gray-200 bg-white'
                     : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
                 }`}
@@ -255,9 +277,21 @@ export default function CheckoutPage() {
                 >
                   <Icon className="w-4.5 h-4.5" />
                 </div>
-                <span className="flex-1 text-sm font-medium text-gray-800">
-                  {method.label}
-                </span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-gray-800">
+                    {method.label}
+                  </span>
+                  {method.id === 'upi' && shopDetails?.upiId && (
+                    <p className="text-xs text-gray-400 truncate mt-0.5">
+                      Pay to: {shopDetails.upiId}
+                    </p>
+                  )}
+                  {isUpiUnavailable && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Not available for this shop
+                    </p>
+                  )}
+                </div>
                 {method.badge && (
                   <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-md">
                     {method.badge}
@@ -368,6 +402,20 @@ export default function CheckoutPage() {
       </BottomSheet>
     </motion.div>
   )
+}
+
+/* ================================
+   UPI Deep Link Builder
+================================ */
+function buildUpiLink({ upiId, payeeName, amount, orderId }) {
+  const params = new URLSearchParams({
+    pa: upiId,
+    pn: payeeName,
+    am: amount.toFixed(2),
+    cu: 'INR',
+    tn: `Order #${orderId}`,
+  })
+  return `upi://pay?${params.toString()}`
 }
 
 /* ================================

@@ -116,8 +116,10 @@ export default function OrderTrackingPage() {
               <p className="text-sm font-semibold text-gray-800">
                 {order.shop.shopName}
               </p>
-              {order.shop.location && (
-                <p className="text-xs text-gray-400">{order.shop.location}</p>
+              {order.shop.address && (order.shop.address.street || order.shop.address.city) && (
+                <p className="text-xs text-gray-400">
+                  {[order.shop.address.street, order.shop.address.city, order.shop.address.state].filter(Boolean).join(', ')}
+                </p>
               )}
             </div>
           </div>

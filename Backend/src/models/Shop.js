@@ -42,10 +42,13 @@ const shopSchema = new mongoose.Schema(
       trim: true,
     },
 
-    location: {
-      type: String,
-      default: "",
-      trim: true,
+    address: {
+      street: { type: String, trim: true, default: "" },
+      city: { type: String, trim: true, default: "" },
+      state: { type: String, trim: true, default: "" },
+      pincode: { type: String, trim: true, default: "" },
+      latitude: { type: Number, default: null },
+      longitude: { type: Number, default: null },
     },
 
     /* ================= OTP AUTH ================= */

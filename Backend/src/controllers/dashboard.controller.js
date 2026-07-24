@@ -29,7 +29,7 @@ function calculateProfileCompletion(shop) {
   if (shop.ownerName) score += 20;
   if (shop.storeCategory) score += 20;
   if (shop.upiId) score += 20;
-  if (shop.location) score += 20;
+  if (shop.address && (shop.address.street || shop.address.city)) score += 20;
   return score;
 }
 
@@ -141,7 +141,7 @@ export async function getDashboard(req, res) {
       mobileNumber:shop.mobileNumber,
 
       gstNumber: shop.gstNumber, // 🧾 GST
-      address: shop.location,   // 📍 Address
+      address: shop.address,   // 📍 Address
 
       profileCompletion,
     },

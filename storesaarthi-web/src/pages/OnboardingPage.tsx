@@ -17,7 +17,10 @@ export function OnboardingPage() {
   )
   const [storeCategory, setStoreCategory] = useState(shop?.storeCategory || 'Kirana')
   const [upiId, setUpiId] = useState(shop?.upiId || '')
-  const [location, setLocation] = useState(shop?.location || '')
+  const [addressStreet, setAddressStreet] = useState(shop?.address?.street || '')
+  const [addressCity, setAddressCity] = useState(shop?.address?.city || '')
+  const [addressState, setAddressState] = useState(shop?.address?.state || '')
+  const [addressPincode, setAddressPincode] = useState(shop?.address?.pincode || '')
   const [gstNumber, setGstNumber] = useState(shop?.gstNumber || '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -26,8 +29,8 @@ export function OnboardingPage() {
     e.preventDefault()
     setError('')
 
-    if (!shopName.trim() || !ownerName.trim() || !upiId.trim() || !location.trim()) {
-      setError('Shop name, owner, UPI ID, and location are required to finish setup')
+    if (!shopName.trim() || !ownerName.trim() || !upiId.trim() || !addressStreet.trim()) {
+      setError('Shop name, owner, UPI ID, and address are required to finish setup')
       return
     }
 
@@ -38,7 +41,12 @@ export function OnboardingPage() {
         ownerName: ownerName.trim(),
         storeCategory,
         upiId: upiId.trim(),
-        location: location.trim(),
+        address: {
+          street: addressStreet.trim(),
+          city: addressCity.trim(),
+          state: addressState.trim(),
+          pincode: addressPincode.trim(),
+        },
         gstNumber: gstNumber.trim(),
       })
       if (updated.isOnboarded) {
@@ -110,13 +118,40 @@ export function OnboardingPage() {
             />
           </label>
           <label>
-            Location
+            Street / Area
             <input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="City / area"
+              value={addressStreet}
+              onChange={(e) => setAddressStreet(e.target.value)}
+              placeholder="Street / area"
               disabled={busy}
               required
+            />
+          </label>
+          <label>
+            City
+            <input
+              value={addressCity}
+              onChange={(e) => setAddressCity(e.target.value)}
+              placeholder="City"
+              disabled={busy}
+            />
+          </label>
+          <label>
+            State
+            <input
+              value={addressState}
+              onChange={(e) => setAddressState(e.target.value)}
+              placeholder="State"
+              disabled={busy}
+            />
+          </label>
+          <label>
+            Pincode
+            <input
+              value={addressPincode}
+              onChange={(e) => setAddressPincode(e.target.value)}
+              placeholder="Pincode"
+              disabled={busy}
             />
           </label>
           <label>

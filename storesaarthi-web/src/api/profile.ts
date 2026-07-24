@@ -1,5 +1,5 @@
 import { apiFetch } from './client'
-import type { Shop } from '../types/auth'
+import type { Shop, ShopAddress } from '../types/auth'
 
 export type UpdateProfilePayload = {
   shopName?: string
@@ -7,7 +7,7 @@ export type UpdateProfilePayload = {
   gstNumber?: string
   storeCategory?: string
   upiId?: string
-  location?: string
+  address?: ShopAddress
 }
 
 export type UpdateProfileResponse = {
@@ -22,8 +22,8 @@ export type ChangePasswordPayload = {
 }
 
 export function updateProfile(payload: UpdateProfilePayload) {
-  return apiFetch<UpdateProfileResponse>('/api/auth/profile', {
-    method: 'PUT',
+  return apiFetch<UpdateProfileResponse>('/api/auth/onboarding', {
+    method: 'POST',
     body: JSON.stringify(payload),
   })
 }

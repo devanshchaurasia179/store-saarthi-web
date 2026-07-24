@@ -56,7 +56,7 @@ const addressSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { _id: true }
+  { _id: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
 const onlineCustomerSchema = new mongoose.Schema(

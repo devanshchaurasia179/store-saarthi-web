@@ -1,3 +1,12 @@
+export type ShopAddress = {
+  street?: string
+  city?: string
+  state?: string
+  pincode?: string
+  latitude?: number | null
+  longitude?: number | null
+}
+
 export type Shop = {
   _id: string
   shopName: string
@@ -6,7 +15,7 @@ export type Shop = {
   gstNumber?: string
   storeCategory?: string
   upiId?: string
-  location?: string
+  address?: ShopAddress
   isOnboarded?: boolean
   hasAnalyticsPin?: boolean
   createdAt?: string
@@ -32,5 +41,5 @@ export type OnboardingPayload = {
   gstNumber?: string
   storeCategory?: string
   upiId?: string
-  location?: string
+  address?: ShopAddress
 }

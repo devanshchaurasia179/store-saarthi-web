@@ -23,9 +23,16 @@ export function ProfilePage() {
   const [ownerName, setOwnerName] = useState(shop?.ownerName ?? '')
   const [storeCategory, setStoreCategory] = useState(shop?.storeCategory ?? 'Kirana')
   const [upiId, setUpiId] = useState(shop?.upiId ?? '')
-  const [location, setLocation] = useState(shop?.location ?? '')
+  const [addressStreet, setAddressStreet] = useState(shop?.address?.street ?? '')
+  const [addressCity, setAddressCity] = useState(shop?.address?.city ?? '')
+  const [addressState, setAddressState] = useState(shop?.address?.state ?? '')
+  const [addressPincode, setAddressPincode] = useState(shop?.address?.pincode ?? '')
+  const [latitude, setLatitude] = useState<string>(shop?.address?.latitude?.toString() ?? '')
+  const [longitude, setLongitude] = useState<string>(shop?.address?.longitude?.toString() ?? '')
   const [gstNumber, setGstNumber] = useState(shop?.gstNumber ?? '')
   const [editing, setEditing] = useState(false)
+  const [fetchingLocation, setFetchingLocation] = useState(false)
+  const [locationError, setLocationError] = useState('')
 
   useEffect(() => {
     if (!shop) return
@@ -33,7 +40,12 @@ export function ProfilePage() {
     setOwnerName(shop.ownerName ?? '')
     setStoreCategory(shop.storeCategory ?? 'Kirana')
     setUpiId(shop.upiId ?? '')
-    setLocation(shop.location ?? '')
+    setAddressStreet(shop.address?.street ?? '')
+    setAddressCity(shop.address?.city ?? '')
+    setAddressState(shop.address?.state ?? '')
+    setAddressPincode(shop.address?.pincode ?? '')
+    setLatitude(shop.address?.latitude?.toString() ?? '')
+    setLongitude(shop.address?.longitude?.toString() ?? '')
     setGstNumber(shop.gstNumber ?? '')
   }, [shop])
 
@@ -42,22 +54,79 @@ export function ProfilePage() {
     setOwnerName(shop?.ownerName ?? '')
     setStoreCategory(shop?.storeCategory ?? 'Kirana')
     setUpiId(shop?.upiId ?? '')
-    setLocation(shop?.location ?? '')
+    setAddressStreet(shop?.address?.street ?? '')
+    setAddressCity(shop?.address?.city ?? '')
+    setAddressState(shop?.address?.state ?? '')
+    setAddressPincode(shop?.address?.pincode ?? '')
+    setLatitude(shop?.address?.latitude?.toString() ?? '')
+    setLongitude(shop?.address?.longitude?.toString() ?? '')
     setGstNumber(shop?.gstNumber ?? '')
     setEditing(false)
     clearSaveStatus()
   }
 
+  /** Attempt to get the browser's current GPS position with high accuracy */
+  function captureLocation(): Promise<{ lat: string; lng: string } | null> {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        setLocationError('Geolocation is not supported by your browser')
+        resolve(null)
+        return
+      }
+      setFetchingLocation(true)
+      setLocationError('')
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude.toFixed(7)
+          const lng = pos.coords.longitude.toFixed(7)
+          setLatitude(lat)
+          setLongitude(lng)
+          setFetchingLocation(false)
+          resolve({ lat, lng })
+        },
+        (err) => {
+          setFetchingLocation(false)
+          setLocationError(
+            err.code === err.PERMISSION_DENIED
+              ? 'Location permission denied. Please allow location access in browser settings.'
+              : err.code === err.TIMEOUT
+                ? 'Location request timed out. Please try again in an open area.'
+                : 'Unable to fetch location. Make sure GPS is enabled.'
+          )
+          resolve(null)
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0, // Force a fresh GPS fix, no cached position
+        }
+      )
+    })
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     clearSaveStatus()
+
+    // Auto-capture location before saving
+    const captured = await captureLocation()
+    const finalLat = captured?.lat ?? latitude.trim()
+    const finalLng = captured?.lng ?? longitude.trim()
+
     try {
       await updateShopProfile({
         shopName: shopName.trim(),
         ownerName: ownerName.trim(),
         storeCategory,
         upiId: upiId.trim(),
-        location: location.trim(),
+        address: {
+          street: addressStreet.trim(),
+          city: addressCity.trim(),
+          state: addressState.trim(),
+          pincode: addressPincode.trim(),
+          latitude: finalLat ? parseFloat(finalLat) : null,
+          longitude: finalLng ? parseFloat(finalLng) : null,
+        },
         gstNumber: gstNumber.trim(),
       })
       await refreshShop()
@@ -209,21 +278,109 @@ export function ProfilePage() {
                     </div>
                   </label>
 
-                  {/* Location */}
+                  {/* Address */}
                   <label className="profile-label">
-                    <span>Location</span>
+                    <span>Street / Area</span>
                     <div className="profile-input-wrap">
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="profile-input-icon">
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
                       </svg>
                       <input
                         className="profile-input"
-                        value={location}
-                        onChange={(e) => setLocation(e.target.value)}
-                        placeholder="City / area"
+                        value={addressStreet}
+                        onChange={(e) => setAddressStreet(e.target.value)}
+                        placeholder="Street / area"
                         disabled={saving}
                       />
                     </div>
+                  </label>
+
+                  {/* City */}
+                  <label className="profile-label">
+                    <span>City</span>
+                    <div className="profile-input-wrap">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="profile-input-icon">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+                      </svg>
+                      <input
+                        className="profile-input"
+                        value={addressCity}
+                        onChange={(e) => setAddressCity(e.target.value)}
+                        placeholder="City"
+                        disabled={saving}
+                      />
+                    </div>
+                  </label>
+
+                  {/* State */}
+                  <label className="profile-label">
+                    <span>State</span>
+                    <div className="profile-input-wrap">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="profile-input-icon">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+                      </svg>
+                      <input
+                        className="profile-input"
+                        value={addressState}
+                        onChange={(e) => setAddressState(e.target.value)}
+                        placeholder="State"
+                        disabled={saving}
+                      />
+                    </div>
+                  </label>
+
+                  {/* Pincode */}
+                  <label className="profile-label">
+                    <span>Pincode</span>
+                    <div className="profile-input-wrap">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="profile-input-icon">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+                      </svg>
+                      <input
+                        className="profile-input"
+                        value={addressPincode}
+                        onChange={(e) => setAddressPincode(e.target.value)}
+                        placeholder="Pincode"
+                        disabled={saving}
+                      />
+                    </div>
+                  </label>
+
+                  {/* Latitude & Longitude — auto-captured */}
+                  <label className="profile-label profile-label--full">
+                    <span>Location (auto-detected on save)</span>
+                    <div className="profile-input-wrap" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="profile-input-icon" style={{ flexShrink: 0 }}>
+                        <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                      </svg>
+                      <input
+                        className="profile-input"
+                        readOnly
+                        value={
+                          latitude && longitude
+                            ? `${latitude}, ${longitude}`
+                            : fetchingLocation
+                              ? 'Detecting…'
+                              : 'Will be captured on save'
+                        }
+                        disabled={saving}
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        className="profile-btn profile-btn--ghost"
+                        style={{ whiteSpace: 'nowrap', padding: '6px 12px', fontSize: '13px' }}
+                        disabled={saving || fetchingLocation}
+                        onClick={() => void captureLocation()}
+                      >
+                        {fetchingLocation ? 'Detecting…' : '📍 Detect Now'}
+                      </button>
+                    </div>
+                    {locationError && (
+                      <span style={{ color: 'var(--color-error, #e53e3e)', fontSize: '12px', marginTop: '4px' }}>
+                        {locationError}
+                      </span>
+                    )}
                   </label>
 
                   {/* GST */}
@@ -265,9 +422,9 @@ export function ProfilePage() {
                   <button
                     type="submit"
                     className="profile-btn profile-btn--primary"
-                    disabled={saving}
+                    disabled={saving || fetchingLocation}
                   >
-                    {saving ? 'Saving…' : 'Save Changes'}
+                    {fetchingLocation ? 'Detecting location…' : saving ? 'Saving…' : 'Save Changes'}
                   </button>
                 </div>
               </form>
@@ -300,8 +457,20 @@ export function ProfilePage() {
                   <span className="profile-info-row__value">{shop?.upiId || '—'}</span>
                 </div>
                 <div className="profile-info-row">
-                  <span className="profile-info-row__label">Location</span>
-                  <span className="profile-info-row__value">{shop?.location || '—'}</span>
+                  <span className="profile-info-row__label">Address</span>
+                  <span className="profile-info-row__value">
+                    {[shop?.address?.street, shop?.address?.city, shop?.address?.state, shop?.address?.pincode]
+                      .filter(Boolean)
+                      .join(', ') || '—'}
+                  </span>
+                </div>
+                <div className="profile-info-row">
+                  <span className="profile-info-row__label">Coordinates</span>
+                  <span className="profile-info-row__value">
+                    {shop?.address?.latitude != null && shop?.address?.longitude != null
+                      ? `${shop.address.latitude}, ${shop.address.longitude}`
+                      : '—'}
+                  </span>
                 </div>
                 <div className="profile-info-row">
                   <span className="profile-info-row__label">GST number</span>

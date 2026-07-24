@@ -1,5 +1,6 @@
 import Shop from "../models/Shop.js";
 import Product from "../models/Product.js";
+import OnlineProfile from "../models/OnlineProfile.js";
 
 /* =========================================================
    PUBLIC SHOP CONTROLLER
@@ -16,16 +17,29 @@ export async function getPublicShopInfo(req, res) {
     const { shopId } = req.params;
 
     const shop = await Shop.findById(shopId).select(
-      "shopName ownerName storeCategory location upiId gstNumber"
+      "shopName ownerName storeCategory address upiId gstNumber"
     );
 
     if (!shop) {
       return res.status(404).json({ message: "Shop not found" });
     }
 
+    // If shop address doesn't have coordinates, try OnlineProfile
+    const shopObj = shop.toObject();
+    if (!shopObj.address?.latitude || !shopObj.address?.longitude) {
+      const profile = await OnlineProfile.findOne({ shop: shopId })
+        .select("address.latitude address.longitude")
+        .lean();
+      if (profile?.address?.latitude && profile?.address?.longitude) {
+        shopObj.address = shopObj.address || {};
+        shopObj.address.latitude = profile.address.latitude;
+        shopObj.address.longitude = profile.address.longitude;
+      }
+    }
+
     res.status(200).json({
       success: true,
-      shop,
+      shop: shopObj,
     });
   } catch (error) {
     console.error("Get Public Shop Info Error:", error.message);

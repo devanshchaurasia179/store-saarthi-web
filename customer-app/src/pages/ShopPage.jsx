@@ -1,7 +1,9 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useShopDetails, useShopCategories, useShopProducts } from '../hooks/useShop'
+import { useAuth } from '../contexts/AuthContext'
+import { getDistanceInKm, formatDistance } from '../utils/distance'
 import ShopBanner from '../components/ShopBanner'
 import SearchBar from '../components/SearchBar'
 import CategoryChips from '../components/CategoryChips'
@@ -16,6 +18,7 @@ import {
 
 export default function ShopPage() {
   const { shopId } = useParams()
+  const { user } = useAuth()
   const [selectedCategory, setSelectedCategory] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -35,6 +38,47 @@ export default function ShopPage() {
     if (!productsData?.pages) return []
     return productsData.pages.flatMap((page) => page.products)
   }, [productsData])
+
+  // Get customer's live location via browser Geolocation
+  const [customerCoords, setCustomerCoords] = useState(null)
+
+  useEffect(() => {
+    if (!navigator.geolocation) return
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCustomerCoords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        })
+      },
+      () => {
+        // Fallback: try saved address if geolocation is denied
+        const addr = user?.addresses?.find((a) => a.isDefault) ||
+          user?.addresses?.find((a) => a.latitude && a.longitude)
+        if (addr) {
+          setCustomerCoords({ latitude: addr.latitude, longitude: addr.longitude })
+        }
+      },
+      { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+    )
+  }, [user])
+
+  // Calculate distance between customer location and shop
+  const distance = useMemo(() => {
+    const shopLat = shop?.address?.latitude
+    const shopLng = shop?.address?.longitude
+
+    if (!customerCoords) return null
+
+    const km = getDistanceInKm(
+      customerCoords.latitude,
+      customerCoords.longitude,
+      shopLat,
+      shopLng
+    )
+    return formatDistance(km)
+  }, [shop, customerCoords])
 
   const handleSearch = useCallback((query) => {
     setSearchQuery(query)
@@ -74,7 +118,7 @@ export default function ShopPage() {
   return (
     <div className="max-w-lg mx-auto pb-4">
       {/* Shop Banner */}
-      {shopLoading ? <ShopBannerSkeleton /> : shop && <ShopBanner shop={shop} />}
+      {shopLoading ? <ShopBannerSkeleton /> : shop && <ShopBanner shop={shop} distance={distance} />}
 
       {/* Search */}
       {shopLoading ? (

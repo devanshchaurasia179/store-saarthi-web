@@ -563,7 +563,7 @@ export async function onboard(req, res) {
       gstNumber = "",
       storeCategory = "",
       upiId = "",
-      location = "",
+      address = {},
     } = req.body;
 
     if (!shopName || !ownerName) {
@@ -577,7 +577,7 @@ export async function onboard(req, res) {
       ownerName,
       storeCategory,
       upiId,
-      location,
+      address: address && (address.street || address.city) ? "filled" : "",
     };
 
     const filledFields = Object.values(completionFields).filter(
@@ -596,7 +596,7 @@ export async function onboard(req, res) {
         gstNumber,
         storeCategory,
         upiId,
-        location,
+        address,
         profileCompletion,
         isOnboarded: profileCompletion === 100,
       },

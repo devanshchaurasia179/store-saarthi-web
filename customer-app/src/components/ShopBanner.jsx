@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
-import { Store, Star, Clock, MapPin } from 'lucide-react'
+import { Store, Star, Clock, MapPin, Navigation } from 'lucide-react'
 import Badge from './Badge'
 
-export default function ShopBanner({ shop }) {
+export default function ShopBanner({ shop, distance }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -46,10 +46,16 @@ export default function ShopBanner({ shop }) {
               <Clock className="w-3.5 h-3.5" />
               15-25 min
             </span>
-            {shop.location && (
+            {distance && (
+              <span className="flex items-center gap-1 text-primary font-medium">
+                <Navigation className="w-3.5 h-3.5 shrink-0" />
+                {distance}
+              </span>
+            )}
+            {shop.address && (shop.address.street || shop.address.city) && (
               <span className="flex items-center gap-1 truncate">
                 <MapPin className="w-3.5 h-3.5 shrink-0" />
-                {shop.location}
+                {[shop.address.street, shop.address.city].filter(Boolean).join(', ')}
               </span>
             )}
           </div>

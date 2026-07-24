@@ -97,7 +97,7 @@ export async function createOrder(req, res) {
 
     // Populate shop info for response
     const populatedOrder = await Order.findById(order._id)
-      .populate("shop", "shopName location")
+      .populate("shop", "shopName address")
       .lean();
 
     res.status(201).json({
@@ -124,7 +124,7 @@ export async function getOrderById(req, res) {
       _id: id,
       customer: customerId,
     })
-      .populate("shop", "shopName location ownerName")
+      .populate("shop", "shopName address ownerName")
       .populate("bill")
       .lean();
 
@@ -165,7 +165,7 @@ export async function getCustomerOrders(req, res) {
 
     const [orders, total] = await Promise.all([
       Order.find(filter)
-        .populate("shop", "shopName location")
+        .populate("shop", "shopName address")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum)

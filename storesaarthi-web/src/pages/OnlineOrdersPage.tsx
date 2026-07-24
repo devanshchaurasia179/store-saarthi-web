@@ -5,6 +5,7 @@ import { createBillFromOrder, fetchOrderById } from '../api/orders'
 import { printBill, printBillOnServer, printKOTOnAgent } from '../api/print'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../api/client'
+import { OnlineProfileModal } from '../components/OnlineProfileModal'
 import type { OnlineOrder, OrderStatus } from '../api/orders'
 import type { PrintKOTPayload, PrintBillPayload } from '../api/print'
 import '../styles/online-orders.css'
@@ -69,6 +70,7 @@ export function OnlineOrdersPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [printingId, setPrintingId] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState('')
+  const [profileModalOpen, setProfileModalOpen] = useState(false)
   const { orders, loading, error, actionLoading, actionError, refresh, accept, reject, changeStatus } =
     useOnlineOrders(statusFilter || undefined)
 
@@ -132,7 +134,7 @@ export function OnlineOrdersPage() {
       // Create bill from order via backend
       const res = await createBillFromOrder(order._id, {
         paymentMode: order.paymentMethod === 'COD' ? 'CASH' : 'UPI',
-        paidAmount: order.paymentMethod === 'COD' ? 0 : order.totalAmount,
+        paidAmount: order.totalAmount,
       })
 
       const bill = res.bill
@@ -200,7 +202,7 @@ export function OnlineOrdersPage() {
     try {
       const res = await createBillFromOrder(order._id, {
         paymentMode: order.paymentMethod === 'COD' ? 'CASH' : 'UPI',
-        paidAmount: order.paymentMethod === 'COD' ? 0 : order.totalAmount,
+        paidAmount: order.totalAmount,
       })
 
       const bill = res.bill
@@ -316,6 +318,18 @@ export function OnlineOrdersPage() {
             <p className="orders-page__subtitle">Manage orders from your online customers</p>
           </div>
           <div className="orders-page__header-right">
+            <button
+              type="button"
+              className="orders-page__profile-btn"
+              onClick={() => setProfileModalOpen(true)}
+              aria-label="Store Profile"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+              Store Profile
+            </button>
             <button
               type="button"
               className="orders-page__refresh-btn"
@@ -670,6 +684,9 @@ export function OnlineOrdersPage() {
           </ul>
         )}
       </main>
+
+      {/* Online Profile Modal */}
+      <OnlineProfileModal open={profileModalOpen} onClose={() => setProfileModalOpen(false)} />
     </DashboardLayout>
   )
 }
