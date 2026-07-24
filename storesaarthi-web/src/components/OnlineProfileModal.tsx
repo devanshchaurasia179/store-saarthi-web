@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { QRCodeCanvas } from 'qrcode.react'
 import {
   fetchOnlineProfile,
   createOnlineProfile,
   updateOnlineProfile,
   toggleStoreStatus,
 } from '../api/onlineProfile'
-import type { OnlineProfile, OnlineProfilePayload } from '../api/onlineProfile'
+import type { OnlineProfilePayload } from '../api/onlineProfile'
 import '../styles/online-profile-modal.css'
 
 interface Props {
@@ -45,6 +46,8 @@ export function OnlineProfileModal({ open, onClose }: Props) {
   const [isNew, setIsNew] = useState(true)
   const [form, setForm] = useState<OnlineProfilePayload>({ ...EMPTY_FORM })
   const [locationLoading, setLocationLoading] = useState(false)
+  const [shopId, setShopId] = useState<string | null>(null)
+  const qrRef = useRef<HTMLDivElement>(null)
   // Track which fields were pre-filled from Shop model (greyed out / read-only)
   const [shopFields, setShopFields] = useState<Set<string>>(new Set())
 
@@ -54,6 +57,7 @@ export function OnlineProfileModal({ open, onClose }: Props) {
     try {
       const res = await fetchOnlineProfile()
       if (res.profile) {
+        setShopId(res.profile.shop)
         // Use shop defaults for the greyed-out fields
         const d = res.defaults
         setForm({
@@ -257,6 +261,16 @@ export function OnlineProfileModal({ open, onClose }: Props) {
     } catch (err: any) {
       setError(err.message || 'Failed to toggle status')
     }
+  }
+
+  function downloadQRCode() {
+    const canvas = qrRef.current?.querySelector('canvas')
+    if (!canvas) return
+    const url = canvas.toDataURL('image/png')
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `store-qr-${shopId}.png`
+    link.click()
   }
 
   if (!open) return null
@@ -645,6 +659,30 @@ export function OnlineProfileModal({ open, onClose }: Props) {
                 </div>
               </div>
             </fieldset>
+
+            {/* Section: QR Code */}
+            {shopId && (
+              <fieldset className="opm-section">
+                <legend className="opm-section-title">Store QR Code</legend>
+                <p className="opm-qr-description">
+                  Customers can scan this QR code to visit your online store directly.
+                </p>
+                <div className="opm-qr-container" ref={qrRef}>
+                  <QRCodeCanvas
+                    value={`https://storesaarthicustomer.vercel.app/shop/${shopId}`}
+                    size={200}
+                    level="H"
+                    includeMargin
+                  />
+                </div>
+                <p className="opm-qr-url">
+                  {`https://storesaarthicustomer.vercel.app/shop/${shopId}`}
+                </p>
+                <button type="button" className="opm-btn opm-btn--secondary" onClick={downloadQRCode}>
+                  Download QR Code
+                </button>
+              </fieldset>
+            )}
           </div>
         )}
 
