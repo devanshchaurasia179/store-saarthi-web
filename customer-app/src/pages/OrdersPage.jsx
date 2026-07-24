@@ -1,36 +1,45 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, ClipboardList, Search } from 'lucide-react'
+import { ArrowLeft, ClipboardList, Clock, History } from 'lucide-react'
 import { orderService } from '../services/orderService'
 import OrderCard from '../components/OrderCard'
 import { Skeleton } from '../components/Skeleton'
-import LoadingSpinner from '../components/LoadingSpinner'
-
-const STATUS_FILTERS = [
-  { value: '', label: 'All' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'accepted', label: 'Accepted' },
-  { value: 'out_for_delivery', label: 'In Transit' },
-  { value: 'delivered', label: 'Delivered' },
-  { value: 'cancelled', label: 'Cancelled' },
-]
 
 export default function OrdersPage() {
   const navigate = useNavigate()
-  const [statusFilter, setStatusFilter] = useState('')
-  const [page, setPage] = useState(1)
+  const [activeTab, setActiveTab] = useState('current')
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', statusFilter, page],
+    queryKey: ['orders'],
     queryFn: () =>
-      orderService.getOrders({ page, limit: 10, status: statusFilter }).then((res) => res.data),
-    keepPreviousData: true,
+      orderService.getOrders({ page: 1, limit: 100, status: '' }).then((res) => res.data),
   })
 
   const orders = data?.orders || []
-  const pagination = data?.pagination || {}
+
+  // Split orders into current (last 24h) and past (older than 24h)
+  const { currentOrders, pastOrders } = useMemo(() => {
+    const now = new Date()
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+
+    const current = []
+    const past = []
+
+    orders.forEach((order) => {
+      const orderDate = new Date(order.createdAt)
+      if (orderDate >= twentyFourHoursAgo) {
+        current.push(order)
+      } else {
+        past.push(order)
+      }
+    })
+
+    return { currentOrders: current, pastOrders: past }
+  }, [orders])
+
+  const displayedOrders = activeTab === 'current' ? currentOrders : pastOrders
 
   return (
     <motion.div
@@ -53,21 +62,44 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* Status filters */}
-      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-3 mb-4">
-        {STATUS_FILTERS.map((filter) => (
-          <button
-            key={filter.value}
-            onClick={() => { setStatusFilter(filter.value); setPage(1) }}
-            className={`shrink-0 px-4 py-2 rounded-full text-xs font-medium transition-all ${
-              statusFilter === filter.value
-                ? 'bg-primary text-white'
-                : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
-            }`}
-          >
-            {filter.label}
-          </button>
-        ))}
+      {/* Tabs: Current / Past */}
+      <div className="flex gap-2 mb-5">
+        <button
+          onClick={() => setActiveTab('current')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all ${
+            activeTab === 'current'
+              ? 'bg-primary text-white shadow-lg shadow-primary/20'
+              : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          Current Orders
+          {currentOrders.length > 0 && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+              activeTab === 'current' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+            }`}>
+              {currentOrders.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('past')}
+          className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all ${
+            activeTab === 'past'
+              ? 'bg-primary text-white shadow-lg shadow-primary/20'
+              : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+          }`}
+        >
+          <History className="w-4 h-4" />
+          Past Orders
+          {pastOrders.length > 0 && (
+            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+              activeTab === 'past' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+            }`}>
+              {pastOrders.length}
+            </span>
+          )}
+        </button>
       </div>
 
       {/* Loading */}
@@ -80,7 +112,7 @@ export default function OrdersPage() {
       )}
 
       {/* Empty state */}
-      {!isLoading && orders.length === 0 && (
+      {!isLoading && displayedOrders.length === 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -90,47 +122,24 @@ export default function OrdersPage() {
             <ClipboardList className="w-10 h-10 text-gray-300" />
           </div>
           <h3 className="font-subheading font-semibold text-gray-700 mb-1">
-            No orders yet
+            {activeTab === 'current' ? 'No current orders' : 'No past orders'}
           </h3>
           <p className="text-sm text-gray-400 max-w-xs">
-            {statusFilter
-              ? `No ${statusFilter} orders found. Try a different filter.`
-              : 'Your orders will appear here once you place one.'}
+            {activeTab === 'current'
+              ? 'Orders placed in the last 24 hours will appear here.'
+              : 'Orders older than 24 hours will appear here.'}
           </p>
         </motion.div>
       )}
 
       {/* Orders list */}
-      {!isLoading && orders.length > 0 && (
+      {!isLoading && displayedOrders.length > 0 && (
         <div className="space-y-3">
           <AnimatePresence mode="popLayout">
-            {orders.map((order) => (
+            {displayedOrders.map((order) => (
               <OrderCard key={order._id} order={order} />
             ))}
           </AnimatePresence>
-        </div>
-      )}
-
-      {/* Pagination */}
-      {!isLoading && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 mt-8">
-          <button
-            disabled={page <= 1}
-            onClick={() => setPage((p) => p - 1)}
-            className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Previous
-          </button>
-          <span className="text-sm text-gray-500">
-            {page} / {pagination.totalPages}
-          </span>
-          <button
-            disabled={page >= pagination.totalPages}
-            onClick={() => setPage((p) => p + 1)}
-            className="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Next
-          </button>
         </div>
       )}
     </motion.div>

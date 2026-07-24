@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Package, ShoppingCart, Check } from 'lucide-react'
 import BottomSheet from './BottomSheet'
@@ -8,21 +9,31 @@ import { formatPrice, calculateDiscount } from '../utils/formatters'
 
 export default function ProductDetailsSheet({ product, isOpen, onClose, shopId, shopName }) {
   const { items, addItem, updateQuantity } = useCart()
+  const [selectedVariant, setSelectedVariant] = useState(null)
 
   if (!product) return null
 
-  const cartItem = items.find((item) => item.id === product._id)
+  const hasVariants = product.variants?.length > 0
+
+  // Determine which item to show in cart (base product or selected variant)
+  const activeId = selectedVariant ? `${product._id}_${selectedVariant._id}` : product._id
+  const cartItem = items.find((item) => item.id === activeId)
   const quantity = cartItem?.quantity || 0
-  const displayPrice = typeof product.price === 'object' ? (product.price?.sellingPrice ?? 0) : (Number(product.price) || 0)
+
+  const basePrice = typeof product.price === 'object' ? (product.price?.sellingPrice ?? 0) : (Number(product.price) || 0)
+  const displayPrice = selectedVariant
+    ? (typeof selectedVariant.price === 'object' ? (selectedVariant.price?.sellingPrice ?? 0) : (Number(selectedVariant.price) || 0))
+    : basePrice
   const discount = calculateDiscount(product.originalPrice, displayPrice)
-  const isOutOfStock = product.inStock === false
+  const isOutOfStock = selectedVariant ? selectedVariant.inStock === false : product.inStock === false
 
   const handleAdd = () => {
     if (isOutOfStock) return
+    const itemName = selectedVariant ? `${product.name} - ${selectedVariant.name}` : product.name
     addItem(
       {
-        id: product._id,
-        name: product.name,
+        id: activeId,
+        name: itemName,
         price: displayPrice,
         originalPrice: product.originalPrice,
         unit: product.unit,
@@ -107,19 +118,43 @@ export default function ProductDetailsSheet({ product, isOpen, onClose, shopId, 
         </div>
 
         {/* Variants */}
-        {product.variants?.length > 0 && (
+        {hasVariants && (
           <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-700">Variants</p>
+            <p className="text-sm font-medium text-gray-700">Select Variant</p>
             <div className="flex flex-wrap gap-2">
+              {/* Base product option */}
+              <button
+                onClick={() => setSelectedVariant(null)}
+                className={`px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
+                  !selectedVariant
+                    ? 'border-primary bg-primary-50 text-primary'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                }`}
+              >
+                <span className="block">{product.unit || 'Regular'}</span>
+                <span className="block mt-0.5 font-bold">{formatPrice(basePrice)}</span>
+              </button>
               {product.variants.map((variant) => {
                 const variantPrice = typeof variant.price === 'object' ? (variant.price?.sellingPrice ?? 0) : (Number(variant.price) || 0)
+                const isSelected = selectedVariant?._id === variant._id
+                const variantOutOfStock = variant.inStock === false
                 return (
-                  <div
+                  <button
                     key={variant._id}
-                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600"
+                    onClick={() => setSelectedVariant(variant)}
+                    disabled={variantOutOfStock}
+                    className={`px-3 py-2 rounded-xl border text-xs font-medium transition-all ${
+                      isSelected
+                        ? 'border-primary bg-primary-50 text-primary'
+                        : variantOutOfStock
+                        ? 'border-gray-100 text-gray-300 cursor-not-allowed bg-gray-50'
+                        : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                    }`}
                   >
-                    {variant.name} — {formatPrice(variantPrice)}
-                  </div>
+                    <span className="block">{variant.name}</span>
+                    <span className="block mt-0.5 font-bold">{formatPrice(variantPrice)}</span>
+                    {variantOutOfStock && <span className="block text-red-400 text-[10px]">Out of stock</span>}
+                  </button>
                 )
               })}
             </div>
@@ -133,8 +168,8 @@ export default function ProductDetailsSheet({ product, isOpen, onClose, shopId, 
           <div className="flex items-center justify-between">
             <QuantitySelector
               quantity={quantity}
-              onIncrease={() => updateQuantity(product._id, quantity + 1)}
-              onDecrease={() => updateQuantity(product._id, quantity - 1)}
+              onIncrease={() => updateQuantity(activeId, quantity + 1)}
+              onDecrease={() => updateQuantity(activeId, quantity - 1)}
             />
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <ShoppingCart className="w-4 h-4" />
@@ -149,7 +184,7 @@ export default function ProductDetailsSheet({ product, isOpen, onClose, shopId, 
             className="w-full py-3.5 bg-primary text-white rounded-xl font-semibold text-base flex items-center justify-center gap-2 hover:bg-primary-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
           >
             <ShoppingCart className="w-5 h-5" />
-            Add to Cart
+            {hasVariants && selectedVariant ? `Add ${selectedVariant.name}` : 'Add to Cart'}
           </motion.button>
         )}
       </div>

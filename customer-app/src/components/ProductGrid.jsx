@@ -13,6 +13,7 @@ export default function ProductGrid({
   shopId,
   shopName,
   onProductClick,
+  disabled = false,
 }) {
   const observerRef = useRef(null)
 
@@ -62,7 +63,7 @@ export default function ProductGrid({
 
   return (
     <div className="px-4 pb-24">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-2">
         {products.map((product, index) => {
           const isLast = index === products.length - 1
           return (
@@ -71,7 +72,7 @@ export default function ProductGrid({
                 product={product}
                 shopId={shopId}
                 shopName={shopName}
-                onProductClick={onProductClick}
+                disabled={disabled}
               />
             </div>
           )

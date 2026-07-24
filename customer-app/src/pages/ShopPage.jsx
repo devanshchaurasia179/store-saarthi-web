@@ -9,7 +9,6 @@ import SearchBar from '../components/SearchBar'
 import CategoryChips from '../components/CategoryChips'
 import ProductGrid from '../components/ProductGrid'
 import CartButton from '../components/CartButton'
-import ProductDetailsSheet from '../components/ProductDetailsSheet'
 import {
   ShopBannerSkeleton,
   SearchBarSkeleton,
@@ -21,7 +20,6 @@ export default function ShopPage() {
   const { user } = useAuth()
   const [selectedCategory, setSelectedCategory] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedProduct, setSelectedProduct] = useState(null)
 
   const { data: shop, isLoading: shopLoading, error: shopError } = useShopDetails(shopId)
   const { data: categories, isLoading: categoriesLoading } = useShopCategories(shopId)
@@ -90,10 +88,6 @@ export default function ShopPage() {
     setSearchQuery('')
   }, [])
 
-  const handleProductClick = useCallback((product) => {
-    setSelectedProduct(product)
-  }, [])
-
   // Error state
   if (shopError) {
     return (
@@ -115,10 +109,63 @@ export default function ShopPage() {
     )
   }
 
+  // Determine if store is closed based on business hours
+  const isStoreClosed = useMemo(() => {
+    if (!shop?.businessHours) return false
+    const { openTime, closeTime, offDays = [] } = shop.businessHours
+
+    const now = new Date()
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    const todayName = dayNames[now.getDay()]
+
+    // Check if today is an off-day
+    if (offDays.includes(todayName)) return true
+
+    // Check if current time is outside open-close window
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const [openH, openM] = openTime.split(':').map(Number)
+    const [closeH, closeM] = closeTime.split(':').map(Number)
+    const openMinutes = openH * 60 + openM
+    const closeMinutes = closeH * 60 + closeM
+
+    if (closeMinutes > openMinutes) {
+      // Normal hours (e.g., 09:00 - 21:00)
+      return currentMinutes < openMinutes || currentMinutes >= closeMinutes
+    } else {
+      // Overnight hours (e.g., 20:00 - 06:00)
+      return currentMinutes < openMinutes && currentMinutes >= closeMinutes
+    }
+  }, [shop])
+
+  const isStoreOffline = shop && (shop.isStoreOnline === false || isStoreClosed)
+
   return (
     <div className="max-w-lg mx-auto pb-4">
       {/* Shop Banner */}
       {shopLoading ? <ShopBannerSkeleton /> : shop && <ShopBanner shop={shop} distance={distance} />}
+
+      {/* Store Offline Banner */}
+      {isStoreOffline && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-4 mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl text-center"
+        >
+          {shop.isStoreOnline === false ? (
+            <>
+              <p className="text-sm font-semibold text-red-700">🚫 Store is currently offline</p>
+              <p className="text-xs text-red-500 mt-1">Ordering is not available right now. Please check back later.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-semibold text-red-700">🕐 Store is currently closed</p>
+              <p className="text-xs text-red-500 mt-1">
+                Business hours: {shop.businessHours?.openTime} – {shop.businessHours?.closeTime}. Please visit during open hours.
+              </p>
+            </>
+          )}
+        </motion.div>
+      )}
 
       {/* Search */}
       {shopLoading ? (
@@ -172,20 +219,11 @@ export default function ShopPage() {
         fetchNextPage={fetchNextPage}
         shopId={shopId}
         shopName={shop?.shopName || ''}
-        onProductClick={handleProductClick}
+        disabled={isStoreOffline}
       />
 
       {/* Sticky Cart Button */}
-      <CartButton />
-
-      {/* Product Details Bottom Sheet */}
-      <ProductDetailsSheet
-        product={selectedProduct}
-        isOpen={!!selectedProduct}
-        onClose={() => setSelectedProduct(null)}
-        shopId={shopId}
-        shopName={shop?.shopName || ''}
-      />
+      {!isStoreOffline && <CartButton />}
     </div>
   )
 }

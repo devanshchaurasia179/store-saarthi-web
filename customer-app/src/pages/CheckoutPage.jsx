@@ -86,6 +86,8 @@ export default function CheckoutPage() {
           payeeName: shopName,
           amount: grandTotal,
           orderId: orderNumber || orderId,
+          customerName: user?.name || '',
+          customerPhone: user?.phone || '',
         })
         window.location.href = upiLink
       }
@@ -103,6 +105,16 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = () => {
     setError('')
+
+    if (shopDetails?.isStoreOnline === false) {
+      setError('This store is currently offline. Please try again later.')
+      return
+    }
+
+    if (shopDetails?.isOnlineOrderingEnabled === false) {
+      setError('Online ordering is currently disabled for this store.')
+      return
+    }
 
     if (!selectedAddress) {
       setError('Please select a delivery address')
@@ -127,10 +139,17 @@ export default function CheckoutPage() {
 
     const orderData = {
       shop: shopId,
-      items: items.map((item) => ({
-        product: item.id,
-        quantity: item.quantity,
-      })),
+      items: items.map((item) => {
+        // Variant items have id format: "productId_variantId"
+        const parts = item.id.split('_')
+        const productId = parts[0]
+        const variantId = parts.length > 1 ? parts[1] : undefined
+        return {
+          product: productId,
+          variant: variantId,
+          quantity: item.quantity,
+        }
+      }),
       address: {
         label: selectedAddress.label,
         fullAddress: selectedAddress.fullAddress,
@@ -419,13 +438,14 @@ export default function CheckoutPage() {
 /* ================================
    UPI Deep Link Builder
 ================================ */
-function buildUpiLink({ upiId, payeeName, amount, orderId }) {
+function buildUpiLink({ upiId, payeeName, amount, orderId, customerName, customerPhone }) {
+  const tn = [`Order #${orderId}`, customerName, customerPhone].filter(Boolean).join(' | ')
   const params = new URLSearchParams({
     pa: upiId,
     pn: payeeName,
     am: amount.toFixed(2),
     cu: 'INR',
-    tn: `Order #${orderId}`,
+    tn,
   })
   return `upi://pay?${params.toString()}`
 }

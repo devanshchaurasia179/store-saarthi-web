@@ -24,12 +24,10 @@ export async function getPublicShopInfo(req, res) {
       return res.status(404).json({ message: "Shop not found" });
     }
 
-    // Fetch online profile for delivery settings & coordinates
+    // Fetch full online profile for the shop
     const shopObj = shop.toObject();
     const profile = await OnlineProfile.findOne({ shop: shopId })
-      .select(
-        "address.latitude address.longitude deliveryCharges freeDeliveryAbove minimumOrderAmount deliveryRadius estimatedDeliveryTime isDeliveryAvailable isPickupAvailable upiId acceptedPaymentMethods"
-      )
+      .select("-__v")
       .lean();
 
     // Backfill coordinates from OnlineProfile if missing on Shop
@@ -41,16 +39,28 @@ export async function getPublicShopInfo(req, res) {
       }
     }
 
-    // Attach delivery settings from OnlineProfile
-    shopObj.deliveryCharges = profile?.deliveryCharges ?? 0;
-    shopObj.freeDeliveryAbove = profile?.freeDeliveryAbove ?? 0;
-    shopObj.minimumOrderAmount = profile?.minimumOrderAmount ?? 0;
-    shopObj.deliveryRadius = profile?.deliveryRadius ?? 5;
-    shopObj.estimatedDeliveryTime = profile?.estimatedDeliveryTime || '';
-    shopObj.isDeliveryAvailable = profile?.isDeliveryAvailable ?? true;
-    shopObj.isPickupAvailable = profile?.isPickupAvailable ?? false;
-    shopObj.upiId = profile?.upiId || shopObj.upiId || '';
-    shopObj.acceptedPaymentMethods = profile?.acceptedPaymentMethods || ['COD'];
+    // Merge all online profile fields into the shop response
+    if (profile) {
+      shopObj.storeDescription = profile.storeDescription || '';
+      shopObj.storeLogo = profile.storeLogo || '';
+      shopObj.storeBanner = profile.storeBanner || '';
+      shopObj.mobileNumber = profile.mobileNumber || '';
+      shopObj.whatsappNumber = profile.whatsappNumber || '';
+      shopObj.email = profile.email || '';
+      shopObj.deliveryCharges = profile.deliveryCharges ?? 0;
+      shopObj.freeDeliveryAbove = profile.freeDeliveryAbove ?? 0;
+      shopObj.minimumOrderAmount = profile.minimumOrderAmount ?? 0;
+      shopObj.deliveryRadius = profile.deliveryRadius ?? 5;
+      shopObj.estimatedDeliveryTime = profile.estimatedDeliveryTime || '';
+      shopObj.deliverySlots = profile.deliverySlots || [];
+      shopObj.isOnlineOrderingEnabled = profile.isOnlineOrderingEnabled ?? true;
+      shopObj.isDeliveryAvailable = profile.isDeliveryAvailable ?? true;
+      shopObj.isPickupAvailable = profile.isPickupAvailable ?? false;
+      shopObj.acceptedPaymentMethods = profile.acceptedPaymentMethods || ['COD'];
+      shopObj.upiId = profile.upiId || shopObj.upiId || '';
+      shopObj.businessHours = profile.businessHours || { openTime: '09:00', closeTime: '21:00', offDays: [] };
+      shopObj.isStoreOnline = profile.isStoreOnline ?? true;
+    }
 
     res.status(200).json({
       success: true,

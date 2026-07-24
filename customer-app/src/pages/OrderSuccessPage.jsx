@@ -1,10 +1,12 @@
 import { useLocation, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { CheckCircle, Package, ArrowRight, ShoppingBag } from 'lucide-react'
+import { useCart } from '../contexts/CartContext'
 
 export default function OrderSuccessPage() {
   const location = useLocation()
   const { orderId } = location.state || {}
+  const { shopId, shopName } = useCart()
 
   return (
     <motion.div
@@ -110,11 +112,11 @@ export default function OrderSuccessPage() {
           </Link>
         )}
         <Link
-          to="/"
+          to={shopId ? `/shop/${shopId}` : '/'}
           className="w-full flex items-center justify-center gap-2 py-3.5 border border-gray-200 text-gray-700 rounded-xl font-medium text-sm hover:bg-gray-50 transition-colors"
         >
           <ShoppingBag className="w-4 h-4" />
-          Continue Shopping
+          Continue Shopping{shopName ? ` with ${shopName}` : ''}
         </Link>
       </motion.div>
     </motion.div>

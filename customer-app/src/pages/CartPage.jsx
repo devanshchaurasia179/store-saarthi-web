@@ -11,19 +11,25 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
+import { useShopDetails } from '../hooks/useShop'
 import QuantitySelector from '../components/QuantitySelector'
 import { formatPrice } from '../utils/formatters'
-import { DELIVERY_CHARGE, FREE_DELIVERY_ABOVE } from '../utils/constants'
 
 export default function CartPage() {
   const navigate = useNavigate()
   const { items, shopName, shopId, subtotal, totalItems, updateQuantity, removeItem, clearCart } =
     useCart()
 
+  // Fetch shop details for delivery charges
+  const { data: shopDetails } = useShopDetails(shopId)
+
+  const shopDeliveryCharge = shopDetails?.deliveryCharges ?? 0
+  const shopFreeDeliveryAbove = shopDetails?.freeDeliveryAbove ?? 0
+
   const deliveryCharge = useMemo(() => {
-    if (subtotal >= FREE_DELIVERY_ABOVE) return 0
-    return DELIVERY_CHARGE
-  }, [subtotal])
+    if (shopFreeDeliveryAbove > 0 && subtotal >= shopFreeDeliveryAbove) return 0
+    return shopDeliveryCharge
+  }, [subtotal, shopDeliveryCharge, shopFreeDeliveryAbove])
 
   const grandTotal = subtotal + deliveryCharge
 
@@ -158,9 +164,9 @@ export default function CartPage() {
               </span>
             )}
           </div>
-          {deliveryCharge > 0 && (
+          {deliveryCharge > 0 && shopFreeDeliveryAbove > 0 && (
             <p className="text-xs text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
-              Add {formatPrice(FREE_DELIVERY_ABOVE - subtotal)} more for free delivery
+              Add {formatPrice(shopFreeDeliveryAbove - subtotal)} more for free delivery
             </p>
           )}
           <div className="pt-3 border-t border-gray-100 flex justify-between">
