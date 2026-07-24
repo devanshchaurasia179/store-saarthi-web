@@ -22,7 +22,6 @@ import { useShopDetails } from '../hooks/useShop'
 import { addressService } from '../services/addressService'
 import { orderService } from '../services/orderService'
 import { formatPrice } from '../utils/formatters'
-import { DELIVERY_CHARGE, FREE_DELIVERY_ABOVE } from '../utils/constants'
 import AddressCard from '../components/AddressCard'
 import BottomSheet from '../components/BottomSheet'
 import { Skeleton } from '../components/Skeleton'
@@ -67,8 +66,10 @@ export default function CheckoutPage() {
     }
   }, [addresses, selectedAddress])
 
-  // Delivery calculation
-  const deliveryCharge = subtotal >= FREE_DELIVERY_ABOVE ? 0 : DELIVERY_CHARGE
+  // Delivery calculation from backend shop settings
+  const shopDeliveryCharge = shopDetails?.deliveryCharges ?? 30
+  const shopFreeDeliveryAbove = shopDetails?.freeDeliveryAbove ?? 0
+  const deliveryCharge = (shopFreeDeliveryAbove > 0 && subtotal >= shopFreeDeliveryAbove) ? 0 : shopDeliveryCharge
   const grandTotal = subtotal + deliveryCharge
 
   // Place order mutation
@@ -110,6 +111,12 @@ export default function CheckoutPage() {
 
     if (items.length === 0) {
       setError('Your cart is empty')
+      return
+    }
+
+    const minOrder = shopDetails?.minimumOrderAmount ?? 0
+    if (minOrder > 0 && subtotal < minOrder) {
+      setError(`Minimum order amount is ${formatPrice(minOrder)}`)
       return
     }
 
@@ -330,6 +337,11 @@ export default function CheckoutPage() {
             value={deliveryCharge === 0 ? 'FREE' : formatPrice(deliveryCharge)}
             valueClass={deliveryCharge === 0 ? 'text-green-600' : ''}
           />
+          {shopFreeDeliveryAbove > 0 && deliveryCharge > 0 && (
+            <p className="text-xs text-gray-400">
+              Free delivery on orders above {formatPrice(shopFreeDeliveryAbove)}
+            </p>
+          )}
           <div className="pt-2.5 mt-2.5 border-t border-gray-100 flex justify-between">
             <span className="text-base font-bold text-gray-900">Total</span>
             <span className="text-base font-bold text-gray-900">{formatPrice(grandTotal)}</span>

@@ -24,18 +24,33 @@ export async function getPublicShopInfo(req, res) {
       return res.status(404).json({ message: "Shop not found" });
     }
 
-    // If shop address doesn't have coordinates, try OnlineProfile
+    // Fetch online profile for delivery settings & coordinates
     const shopObj = shop.toObject();
-    if (!shopObj.address?.latitude || !shopObj.address?.longitude) {
-      const profile = await OnlineProfile.findOne({ shop: shopId })
-        .select("address.latitude address.longitude")
-        .lean();
-      if (profile?.address?.latitude && profile?.address?.longitude) {
+    const profile = await OnlineProfile.findOne({ shop: shopId })
+      .select(
+        "address.latitude address.longitude deliveryCharges freeDeliveryAbove minimumOrderAmount deliveryRadius estimatedDeliveryTime isDeliveryAvailable isPickupAvailable upiId acceptedPaymentMethods"
+      )
+      .lean();
+
+    // Backfill coordinates from OnlineProfile if missing on Shop
+    if (profile?.address?.latitude && profile?.address?.longitude) {
+      if (!shopObj.address?.latitude || !shopObj.address?.longitude) {
         shopObj.address = shopObj.address || {};
         shopObj.address.latitude = profile.address.latitude;
         shopObj.address.longitude = profile.address.longitude;
       }
     }
+
+    // Attach delivery settings from OnlineProfile
+    shopObj.deliveryCharges = profile?.deliveryCharges ?? 0;
+    shopObj.freeDeliveryAbove = profile?.freeDeliveryAbove ?? 0;
+    shopObj.minimumOrderAmount = profile?.minimumOrderAmount ?? 0;
+    shopObj.deliveryRadius = profile?.deliveryRadius ?? 5;
+    shopObj.estimatedDeliveryTime = profile?.estimatedDeliveryTime || '';
+    shopObj.isDeliveryAvailable = profile?.isDeliveryAvailable ?? true;
+    shopObj.isPickupAvailable = profile?.isPickupAvailable ?? false;
+    shopObj.upiId = profile?.upiId || shopObj.upiId || '';
+    shopObj.acceptedPaymentMethods = profile?.acceptedPaymentMethods || ['COD'];
 
     res.status(200).json({
       success: true,
