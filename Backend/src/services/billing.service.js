@@ -89,13 +89,16 @@ export async function createBillFromOrder({
       _id: item.product,
       shopId,
       isActive: true,
-    }).select("name unit price isTrackable quantity");
+    }).select("name unit price isTrackable quantity variants");
 
     if (!product) {
       throw new Error(`Product not found: ${item.product}`);
     }
 
-    const price = Number(product.price.sellingPrice);
+    // Use the order item's productName (includes variant) if available,
+    // otherwise fall back to product.name
+    const itemName = item.productName || product.name;
+    const price = Number(item.price) || Number(product.price.sellingPrice);
     const quantity = Number(item.quantity);
     const total = price * quantity;
     subTotal += total;
@@ -103,7 +106,7 @@ export async function createBillFromOrder({
     billItems.push({
       productId: product._id,
       variantId: null,
-      name: product.name,
+      name: itemName,
       quantity,
       unit: product.unit || "unit",
       price,
