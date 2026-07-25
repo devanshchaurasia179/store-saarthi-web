@@ -85,6 +85,7 @@ export async function createBillFromOrder({
   let subTotal = 0;
 
   for (const item of orderItems) {
+    console.log("[billing.service] orderItem:", JSON.stringify(item));
     const product = await Product.findOne({
       _id: item.product,
       shopId,
@@ -98,6 +99,7 @@ export async function createBillFromOrder({
     // Use the order item's productName (includes variant) if available,
     // otherwise fall back to product.name
     const itemName = item.productName || product.name;
+    console.log("[billing.service] itemName:", itemName, "| item.productName:", item.productName, "| product.name:", product.name);
     const price = Number(item.price) || Number(product.price.sellingPrice);
     const quantity = Number(item.quantity);
     const total = price * quantity;

@@ -124,7 +124,7 @@ export default function CheckoutPage() {
 
       clearCart()
       navigate('/order-success', {
-        state: { orderId, orderNumber, estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '' },
+        state: { orderId, orderNumber, estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '', orderType },
         replace: true,
       })
     },

@@ -20,7 +20,7 @@ export function validateCreateOrder(body) {
   if (!items || !Array.isArray(items) || items.length === 0) {
     errors.push("items must be a non-empty array");
   } else {
-    const productIds = new Set();
+    const seenKeys = new Set();
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -28,11 +28,16 @@ export function validateCreateOrder(body) {
       if (!item.product) {
         errors.push(`items[${i}].product is required`);
       } else {
-        // Check for duplicate products
-        if (productIds.has(item.product)) {
+        // Build a unique key from product + variant so different variants
+        // of the same product are NOT treated as duplicates
+        const key = item.variant
+          ? `${item.product}::${item.variant}`
+          : item.product;
+
+        if (seenKeys.has(key)) {
           errors.push(`Duplicate product in items: ${item.product}`);
         }
-        productIds.add(item.product);
+        seenKeys.add(key);
       }
 
       if (!item.quantity || item.quantity <= 0 || !Number.isInteger(item.quantity)) {
