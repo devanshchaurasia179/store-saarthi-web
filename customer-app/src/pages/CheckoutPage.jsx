@@ -1,7 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { useQuery, useMutation } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft,
   MapPin,
@@ -16,11 +16,13 @@ import {
   Truck,
   AlertCircle,
   UtensilsCrossed,
+  User,
 } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useShopDetails } from '../hooks/useShop'
 import { addressService } from '../services/addressService'
+import { authService } from '../services/authService'
 import { orderService } from '../services/orderService'
 import { formatPrice } from '../utils/formatters'
 import AddressCard from '../components/AddressCard'
@@ -35,19 +37,22 @@ const ALL_PAYMENT_METHODS = [
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useQueryClient()
   const { items, shopId, shopName, subtotal, totalItems, clearCart } = useCart()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, updateUser } = useAuth()
 
   // Order type from OrderTypePage
   const orderType = location.state?.orderType || 'delivery'
   const tableNumber = location.state?.tableNumber || ''
   const isDineIn = orderType === 'dineIn'
 
-  // Delivery orders require login
-  if (!isDineIn && !isAuthenticated) {
-    navigate('/login', { state: { from: '/checkout' }, replace: true })
-    return null
-  }
+  // Delivery orders require login — redirect inside useEffect
+  const needsLogin = !isDineIn && !isAuthenticated
+  useEffect(() => {
+    if (needsLogin) {
+      navigate('/login', { state: { from: '/checkout' }, replace: true })
+    }
+  }, [needsLogin, navigate])
 
   // Fetch shop details to get UPI ID
   const { data: shopDetails } = useShopDetails(shopId)
@@ -57,6 +62,19 @@ export default function CheckoutPage() {
   const [orderNotes, setOrderNotes] = useState('')
   const [showAddressPicker, setShowAddressPicker] = useState(false)
   const [error, setError] = useState('')
+
+  // New user profile completion state
+  const [profileName, setProfileName] = useState(user?.name || '')
+  const [newAddress, setNewAddress] = useState({
+    label: 'Home',
+    fullAddress: '',
+    houseNumber: '',
+    landmark: '',
+    city: '',
+    pincode: '',
+  })
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileError, setProfileError] = useState('')
 
   // Fetch addresses (only for delivery orders)
   const { data: addresses = [], isLoading: addressesLoading } = useQuery({
@@ -96,6 +114,107 @@ export default function CheckoutPage() {
 
   // Delivery calculation from backend shop settings
   const shopDeliveryCharge = shopDetails?.deliveryCharges ?? 30
+
+  // If user needs login, show nothing while redirect happens
+  if (needsLogin) {
+    return null
+  }
+
+  // Check if new user needs to complete profile (name + address) for delivery
+  const needsProfileCompletion = !isDineIn && isAuthenticated && (!user?.name || addresses.length === 0)
+
+  const handleSaveProfile = async () => {
+    setProfileError('')
+
+    if (!profileName.trim()) {
+      setProfileError('Please enter your name')
+      return
+    }
+
+    if (!newAddress.fullAddress.trim()) {
+      setProfileError('Please enter your full address')
+      return
+    }
+
+    setProfileSaving(true)
+    try {
+      // Silently get user's current location (high accuracy with retry)
+      let latitude = null
+      let longitude = null
+      try {
+        // First attempt with high accuracy (GPS)
+        let position
+        try {
+          position = await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true,
+              timeout: 15000,
+              maximumAge: 0,
+            })
+          })
+        } catch (firstErr) {
+          // If high accuracy fails (timeout on desktop), retry with lower accuracy
+          if (firstErr.code === firstErr.TIMEOUT) {
+            position = await new Promise((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: false,
+                timeout: 10000,
+                maximumAge: 60000,
+              })
+            })
+          } else {
+            throw firstErr
+          }
+        }
+
+        latitude = position.coords.latitude
+        longitude = position.coords.longitude
+
+        // Reject if accuracy is worse than 500 meters (too vague)
+        if (position.coords.accuracy > 500) {
+          setProfileSaving(false)
+          setProfileError('Unable to get accurate location. Please ensure GPS is enabled and try again.')
+          return
+        }
+      } catch (locErr) {
+        setProfileSaving(false)
+        if (locErr.code === 1) {
+          setProfileError('Location permission denied. Please allow location access in your browser settings for delivery.')
+        } else {
+          setProfileError('Unable to get your location. Please enable GPS/location services and try again.')
+        }
+        return
+      }
+
+      // Save name if missing
+      if (!user?.name) {
+        const profileRes = await authService.updateProfile({ name: profileName.trim() })
+        updateUser(profileRes.data.customer)
+      }
+
+      // Save address if none exist
+      if (addresses.length === 0) {
+        const addressRes = await addressService.addAddress({
+          ...newAddress,
+          fullAddress: newAddress.fullAddress.trim(),
+          latitude,
+          longitude,
+          isDefault: true,
+        })
+        queryClient.setQueryData(['addresses'], addressRes.data.addresses)
+        updateUser((prev) => ({ ...prev, addresses: addressRes.data.addresses }))
+        // Auto-select the newly added address
+        if (addressRes.data.addresses.length > 0) {
+          setSelectedAddress(addressRes.data.addresses[0])
+        }
+      }
+    } catch (err) {
+      setProfileError(err.response?.data?.message || 'Failed to save. Please try again.')
+    } finally {
+      setProfileSaving(false)
+    }
+  }
+
   const shopFreeDeliveryAbove = shopDetails?.freeDeliveryAbove ?? 0
   const deliveryCharge = isDineIn ? 0 : ((shopFreeDeliveryAbove > 0 && subtotal >= shopFreeDeliveryAbove) ? 0 : shopDeliveryCharge)
   const grandTotal = subtotal + deliveryCharge
@@ -288,8 +407,105 @@ export default function CheckoutPage() {
         </div>
       )}
 
+      {/* Profile Completion for new users (delivery only) */}
+      {!isDineIn && needsProfileCompletion && (
+        <Section title="Complete Your Details" icon={User}>
+          <div className="space-y-3">
+            {!user?.name && (
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Your Name</label>
+                <input
+                  type="text"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  placeholder="Enter your full name"
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+                />
+              </div>
+            )}
+
+            {addresses.length === 0 && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 mb-1 block">Full Address</label>
+                  <input
+                    type="text"
+                    value={newAddress.fullAddress}
+                    onChange={(e) => setNewAddress((a) => ({ ...a, fullAddress: e.target.value }))}
+                    placeholder="Street, area, locality"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">House / Flat No.</label>
+                    <input
+                      type="text"
+                      value={newAddress.houseNumber}
+                      onChange={(e) => setNewAddress((a) => ({ ...a, houseNumber: e.target.value }))}
+                      placeholder="e.g. B-204"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Landmark</label>
+                    <input
+                      type="text"
+                      value={newAddress.landmark}
+                      onChange={(e) => setNewAddress((a) => ({ ...a, landmark: e.target.value }))}
+                      placeholder="Near..."
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">City</label>
+                    <input
+                      type="text"
+                      value={newAddress.city}
+                      onChange={(e) => setNewAddress((a) => ({ ...a, city: e.target.value }))}
+                      placeholder="City"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 mb-1 block">Pincode</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={newAddress.pincode}
+                      onChange={(e) => setNewAddress((a) => ({ ...a, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+                      placeholder="6-digit"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {profileError && (
+              <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{profileError}</p>
+            )}
+
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              onClick={handleSaveProfile}
+              disabled={profileSaving}
+              className="w-full py-3 bg-primary text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary-light transition-colors disabled:opacity-50 shadow-md shadow-primary/20"
+            >
+              {profileSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Save & Continue'
+              )}
+            </motion.button>
+          </div>
+        </Section>
+      )}
+
       {/* Delivery Address (only for delivery orders) */}
-      {!isDineIn && (
+      {!isDineIn && !needsProfileCompletion && (
       <Section title="Delivery Address" icon={MapPin}>
         {addressesLoading ? (
           <Skeleton className="w-full h-20 rounded-xl" />
@@ -450,7 +666,7 @@ export default function CheckoutPage() {
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={handlePlaceOrder}
-              disabled={orderMutation.isPending || (!isDineIn && !selectedAddress)}
+              disabled={orderMutation.isPending || (!isDineIn && !selectedAddress) || needsProfileCompletion}
               className="flex items-center gap-2 px-8 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
             >
               {orderMutation.isPending ? (

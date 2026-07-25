@@ -2,6 +2,7 @@ import Bill from "../models/Bill.js";
 import Product from "../models/Product.js";
 import Customer from "../models/Customer.js";
 import LedgerEntry from "../models/LedgerEntry.js";
+import Order from "../models/Order.js";
 import { encrypt, decrypt } from "../utils/encrypt.js";
 
 /* --------------------------------------------------
@@ -331,9 +332,30 @@ export async function getBillById(req, res) {
       return res.status(404).json({ message: "Bill not found" });
     }
 
+    const decrypted = decryptBill(bill);
+
+    // If no customerId, check if this bill was created from an order
+    let orderInfo = null;
+    if (!bill.customerId) {
+      const order = await Order.findOne({ bill: bill._id, shop: shopId })
+        .populate("customer", "name phone")
+        .select("customer orderType tableNumber")
+        .lean();
+
+      if (order) {
+        orderInfo = {
+          customerName: order.customer?.name || null,
+          customerPhone: order.customer?.phone || null,
+          orderType: order.orderType,
+          tableNumber: order.tableNumber || "",
+        };
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      bill: decryptBill(bill),
+      bill: decrypted,
+      orderInfo,
     });
   } catch (error) {
     console.error("Get Bill By Id Error:", error.message);

@@ -5,7 +5,7 @@ import { fetchBillById } from '../api/bills'
 import { billToPrintPayload, printBill } from '../api/print'
 import { useAuth } from '../context/AuthContext'
 import { DashboardLayout } from '../components/dashboard/DashboardLayout'
-import type { Bill, BillCustomer } from '../types/bill'
+import type { Bill, BillCustomer, BillOrderInfo } from '../types/bill'
 
 function formatMoney(value: number) {
   return `₹${Number(value || 0).toLocaleString('en-IN', {
@@ -24,16 +24,30 @@ function formatDate(iso: string) {
   })
 }
 
-function customerLabel(customerId: Bill['customerId']) {
-  if (!customerId) return 'Walk-in'
-  if (typeof customerId === 'string') return 'Customer'
-  return `${customerId.name} · ${customerId.mobileNumber}`
+function customerLabel(customerId: Bill['customerId'], orderInfo?: BillOrderInfo | null) {
+  // 1. Bill's own customer (shop customer) — takes priority
+  if (customerId && typeof customerId !== 'string' && customerId.name) {
+    return `${customerId.name} · ${customerId.mobileNumber}`
+  }
+  // 2. If dineIn → show table number
+  if (orderInfo?.orderType === 'dineIn') {
+    return `Table ${orderInfo.tableNumber || '-'}`
+  }
+  // 3. Order's online customer name
+  if (orderInfo?.customerName) {
+    const phone = orderInfo.customerPhone ? ` · ${orderInfo.customerPhone}` : ''
+    return `${orderInfo.customerName}${phone}`
+  }
+  return 'Walk-in'
 }
 
-function customerNameOnly(customerId: Bill['customerId']) {
-  if (!customerId) return null
-  if (typeof customerId === 'string') return null
-  return customerId.name
+function customerNameOnly(customerId: Bill['customerId'], orderInfo?: BillOrderInfo | null) {
+  if (customerId && typeof customerId !== 'string' && customerId.name) return customerId.name
+  if (orderInfo?.orderType === 'dineIn') {
+    return `Table ${orderInfo.tableNumber || '-'}`
+  }
+  if (orderInfo?.customerName) return orderInfo.customerName
+  return null
 }
 
 export function BillDetailPage() {
@@ -87,7 +101,7 @@ export function BillDetailPage() {
       const payload = billToPrintPayload(
         bill,
         shop?.shopName || 'StoreSaarthi',
-        customerNameOnly(customer ?? null),
+        customerNameOnly(customer ?? null, bill.orderInfo),
         shop?.upiId || undefined,
       )
       const res = await printBill(billId, payload)
@@ -216,7 +230,7 @@ export function BillDetailPage() {
                   </div>
                   <div className="bill-detail-page__meta-info">
                     <span className="bill-detail-page__meta-label">Customer</span>
-                    <strong className="bill-detail-page__meta-value">{customerLabel(customer ?? null)}</strong>
+                    <strong className="bill-detail-page__meta-value">{customerLabel(customer ?? null, bill.orderInfo)}</strong>
                   </div>
                 </div>
                 <div className="bill-detail-page__meta-card">
@@ -306,8 +320,8 @@ export function BillDetailPage() {
                 <h1>{shop?.shopName || 'StoreSaarthi'}</h1>
                 <p>Bill #{bill.dailyBillNumber}</p>
                 <p>{formatDate(bill.createdAt)}</p>
-                {customerNameOnly(customer ?? null) && (
-                  <p>Customer: {customerNameOnly(customer ?? null)}</p>
+                {customerNameOnly(customer ?? null, bill.orderInfo) && (
+                  <p>Customer: {customerNameOnly(customer ?? null, bill.orderInfo)}</p>
                 )}
               </header>
 

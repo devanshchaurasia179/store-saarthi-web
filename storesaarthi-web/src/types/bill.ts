@@ -17,6 +17,13 @@ export type BillCustomer = {
   mobileNumber: string
 } | null
 
+export type BillOrderInfo = {
+  customerName: string | null
+  customerPhone: string | null
+  orderType: 'delivery' | 'dineIn' | null
+  tableNumber: string | null
+}
+
 export type Bill = {
   _id: string
   shopId: string
@@ -30,6 +37,7 @@ export type Bill = {
   paidAmount: number
   paymentStatus: PaymentStatus
   paymentMode: PaymentMode
+  orderInfo?: BillOrderInfo | null
   createdAt: string
   updatedAt: string
 }

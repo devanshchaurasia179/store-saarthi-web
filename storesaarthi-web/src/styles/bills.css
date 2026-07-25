@@ -495,6 +495,12 @@
   margin-bottom: 2px;
 }
 
+.bills-page__card-customer {
+  font-weight: 500;
+  color: #6b7280;
+  font-size: 0.88rem;
+}
+
 .bills-page__card-time {
   color: #9ca3af;
   font-size: 0.82rem;

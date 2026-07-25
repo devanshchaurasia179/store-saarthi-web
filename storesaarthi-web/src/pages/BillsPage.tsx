@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ApiError } from '../api/client'
 import { fetchBills } from '../api/bills'
 import { DashboardLayout } from '../components/dashboard/DashboardLayout'
-import type { Bill } from '../types/bill'
+import type { Bill, BillCustomer } from '../types/bill'
 
 function formatMoney(value: number) {
   return `₹${Number(value || 0).toLocaleString('en-IN', {
@@ -44,6 +44,32 @@ function prettyDateKey(key: string) {
 /** Today's date key in local time */
 function todayKey() {
   return toLocalDateKey(new Date().toISOString())
+}
+
+/** Derive display name for a bill:
+ *  1. If bill has a populated customerId with name → use it
+ *  2. Else if it's a dineIn order → show "Table X"
+ *  3. Else if the linked order has a customer name → use it
+ *  4. Otherwise → null (no name to display)
+ */
+function getBillCustomerLabel(bill: Bill): string | null {
+  // Check bill's own customerId (populated object with name)
+  if (bill.customerId && typeof bill.customerId === 'object') {
+    const customer = bill.customerId as BillCustomer
+    if (customer && customer.name) return customer.name
+  }
+
+  // Check order info
+  if (bill.orderInfo) {
+    // If dineIn → show table number
+    if (bill.orderInfo.orderType === 'dineIn') {
+      return `Table ${bill.orderInfo.tableNumber || '-'}`
+    }
+    // Online order customer name
+    if (bill.orderInfo.customerName) return bill.orderInfo.customerName
+  }
+
+  return null
 }
 
 export function BillsPage() {
@@ -93,7 +119,8 @@ export function BillsPage() {
         (b) =>
           String(b.dailyBillNumber).includes(q) ||
           b.paymentStatus.toLowerCase().includes(q) ||
-          formatMoney(b.totalAmount).toLowerCase().includes(q),
+          formatMoney(b.totalAmount).toLowerCase().includes(q) ||
+          (getBillCustomerLabel(b) || '').toLowerCase().includes(q),
       )
     }
 
@@ -354,6 +381,10 @@ export function BillsPage() {
                           <div className="bills-page__card-info">
                             <p className="bills-page__card-title">
                               Bill #{bill.dailyBillNumber}
+                              {(() => {
+                                const label = getBillCustomerLabel(bill)
+                                return label ? <span className="bills-page__card-customer"> — {label}</span> : null
+                              })()}
                             </p>
                             <p className="bills-page__card-time">
                               {formatDate(bill.createdAt)}
