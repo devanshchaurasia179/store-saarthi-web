@@ -42,7 +42,7 @@ export async function createOrder(req, res) {
         _id: item.product,
         shopId: shop,
         isActive: true,
-      }).select("name price quantity isTrackable");
+      }).select("name price quantity isTrackable variants");
 
       if (!product) {
         return res.status(404).json({
@@ -57,14 +57,26 @@ export async function createOrder(req, res) {
         });
       }
 
-      // Server-side price calculation (never trust frontend)
-      const price = Number(product.price.sellingPrice);
+      // If a variant is specified, use its price and include variant name
+      let price = Number(product.price.sellingPrice);
+      let productName = product.name;
+
+      if (item.variant && product.variants && product.variants.length > 0) {
+        const variant = product.variants.find(
+          (v) => String(v._id) === String(item.variant)
+        );
+        if (variant) {
+          price = Number(variant.price.sellingPrice);
+          productName = `${product.name} (${variant.name})`;
+        }
+      }
+
       const quantity = Number(item.quantity);
       const subtotal = price * quantity;
 
       orderItems.push({
         product: product._id,
-        productName: product.name,
+        productName,
         price,
         quantity,
         subtotal,
@@ -152,7 +164,7 @@ export async function createDineInOrder(req, res) {
         _id: item.product,
         shopId: shop,
         isActive: true,
-      }).select("name price quantity isTrackable");
+      }).select("name price quantity isTrackable variants");
 
       if (!product) {
         return res.status(404).json({
@@ -166,13 +178,26 @@ export async function createDineInOrder(req, res) {
         });
       }
 
-      const price = Number(product.price.sellingPrice);
+      // If a variant is specified, use its price and include variant name
+      let price = Number(product.price.sellingPrice);
+      let productName = product.name;
+
+      if (item.variant && product.variants && product.variants.length > 0) {
+        const variant = product.variants.find(
+          (v) => String(v._id) === String(item.variant)
+        );
+        if (variant) {
+          price = Number(variant.price.sellingPrice);
+          productName = `${product.name} (${variant.name})`;
+        }
+      }
+
       const quantity = Number(item.quantity);
       const subtotal = price * quantity;
 
       orderItems.push({
         product: product._id,
-        productName: product.name,
+        productName,
         price,
         quantity,
         subtotal,

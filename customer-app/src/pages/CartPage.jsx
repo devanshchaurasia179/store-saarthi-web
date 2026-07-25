@@ -1,4 +1,3 @@
-import { useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -7,11 +6,9 @@ import {
   ArrowLeft,
   Package,
   Tag,
-  Truck,
   ChevronRight,
 } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
-import { useShopDetails } from '../hooks/useShop'
 import QuantitySelector from '../components/QuantitySelector'
 import { formatPrice } from '../utils/formatters'
 
@@ -19,19 +16,6 @@ export default function CartPage() {
   const navigate = useNavigate()
   const { items, shopName, shopId, subtotal, totalItems, updateQuantity, removeItem, clearCart } =
     useCart()
-
-  // Fetch shop details for delivery charges
-  const { data: shopDetails } = useShopDetails(shopId)
-
-  const shopDeliveryCharge = shopDetails?.deliveryCharges ?? 0
-  const shopFreeDeliveryAbove = shopDetails?.freeDeliveryAbove ?? 0
-
-  const deliveryCharge = useMemo(() => {
-    if (shopFreeDeliveryAbove > 0 && subtotal >= shopFreeDeliveryAbove) return 0
-    return shopDeliveryCharge
-  }, [subtotal, shopDeliveryCharge, shopFreeDeliveryAbove])
-
-  const grandTotal = subtotal + deliveryCharge
 
   // Empty cart state
   if (items.length === 0) {
@@ -147,32 +131,10 @@ export default function CartPage() {
           Bill Details
         </h3>
         <div className="space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotal</span>
-            <span className="text-gray-800 font-medium">{formatPrice(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500 flex items-center gap-1.5">
-              <Truck className="w-3.5 h-3.5" />
-              Delivery charge
-            </span>
-            {deliveryCharge === 0 ? (
-              <span className="text-green-600 font-medium">FREE</span>
-            ) : (
-              <span className="text-gray-800 font-medium">
-                {formatPrice(deliveryCharge)}
-              </span>
-            )}
-          </div>
-          {deliveryCharge > 0 && shopFreeDeliveryAbove > 0 && (
-            <p className="text-xs text-green-600 bg-green-50 px-3 py-1.5 rounded-lg">
-              Add {formatPrice(shopFreeDeliveryAbove - subtotal)} more for free delivery
-            </p>
-          )}
-          <div className="pt-3 border-t border-gray-100 flex justify-between">
-            <span className="text-base font-bold text-gray-900">Grand Total</span>
+          <div className="pt-3 flex justify-between">
+            <span className="text-base font-bold text-gray-900">Subtotal</span>
             <span className="text-base font-bold text-gray-900">
-              {formatPrice(grandTotal)}
+              {formatPrice(subtotal)}
             </span>
           </div>
         </div>
@@ -183,8 +145,8 @@ export default function CartPage() {
         <div className="max-w-lg mx-auto">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="text-xs text-gray-400">Total</p>
-              <p className="text-xl font-bold text-gray-900">{formatPrice(grandTotal)}</p>
+              <p className="text-xs text-gray-400">Subtotal</p>
+              <p className="text-xl font-bold text-gray-900">{formatPrice(subtotal)}</p>
             </div>
             <motion.button
               whileTap={{ scale: 0.97 }}

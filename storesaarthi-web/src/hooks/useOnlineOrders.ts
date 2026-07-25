@@ -20,6 +20,41 @@ type UseOnlineOrdersReturn = {
   changeStatus: (id: string, status: OrderStatus) => Promise<void>
 }
 
+const POLL_INTERVAL = 3000 // 3 seconds
+
+// Play beep sound from public folder — loops for 3 seconds
+const beepAudio = new Audio('/beep.mp3')
+beepAudio.preload = 'auto'
+beepAudio.loop = true
+
+let beepTimeout: ReturnType<typeof setTimeout> | null = null
+
+function playNewOrderBeep() {
+  try {
+    // Stop any ongoing beep first
+    if (beepTimeout) {
+      clearTimeout(beepTimeout)
+      beepTimeout = null
+    }
+
+    beepAudio.currentTime = 0
+    beepAudio.loop = true
+    beepAudio.play().catch(() => {
+      // Browser may block autoplay until user interaction
+    })
+
+    // Stop after 3 seconds
+    beepTimeout = setTimeout(() => {
+      beepAudio.pause()
+      beepAudio.currentTime = 0
+      beepAudio.loop = false
+      beepTimeout = null
+    }, 3000)
+  } catch {
+    // Silently ignore if audio fails
+  }
+}
+
 export function useOnlineOrders(statusFilter?: string): UseOnlineOrdersReturn {
   const [orders, setOrders] = useState<OnlineOrder[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,6 +62,8 @@ export function useOnlineOrders(statusFilter?: string): UseOnlineOrdersReturn {
   const [actionLoading, setActionLoading] = useState(false)
   const [actionError, setActionError] = useState('')
   const refreshRef = useRef(0)
+  const knownOrderIdsRef = useRef<Set<string>>(new Set())
+  const isFirstLoadRef = useRef(true)
 
   const load = useCallback(() => {
     refreshRef.current += 1
@@ -39,6 +76,12 @@ export function useOnlineOrders(statusFilter?: string): UseOnlineOrdersReturn {
       .then((res) => {
         if (tick !== refreshRef.current) return
         setOrders(res.orders)
+
+        // On first load, just record known IDs without beeping
+        if (isFirstLoadRef.current) {
+          isFirstLoadRef.current = false
+          knownOrderIdsRef.current = new Set(res.orders.map((o) => o._id))
+        }
       })
       .catch((err) => {
         if (tick !== refreshRef.current) return
@@ -49,9 +92,39 @@ export function useOnlineOrders(statusFilter?: string): UseOnlineOrdersReturn {
       })
   }, [statusFilter])
 
+  // Silent poll — fetches orders without showing loading state
+  const poll = useCallback(() => {
+    fetchOrders({ status: statusFilter, limit: 50 })
+      .then((res) => {
+        setOrders(res.orders)
+
+        // Check for new pending orders that we haven't seen before
+        const currentIds = new Set(res.orders.map((o) => o._id))
+        const newPendingOrders = res.orders.filter(
+          (o) => o.status === 'pending' && !knownOrderIdsRef.current.has(o._id),
+        )
+
+        if (newPendingOrders.length > 0) {
+          playNewOrderBeep()
+        }
+
+        // Update known IDs
+        knownOrderIdsRef.current = currentIds
+      })
+      .catch(() => {
+        // Silent fail on poll — don't show error for background fetches
+      })
+  }, [statusFilter])
+
   useEffect(() => {
     load()
   }, [load])
+
+  // Polling every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(poll, POLL_INTERVAL)
+    return () => clearInterval(interval)
+  }, [poll])
 
   const accept = useCallback(async (id: string) => {
     setActionLoading(true)

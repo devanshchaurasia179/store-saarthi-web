@@ -736,10 +736,9 @@ app.post("/print-kot", async (req, res) => {
     });
   });
 
+  for (let i = 0; i <2; i++) lines.push(kotPadLine(""));
   lines.push(KOT_DIVIDER);
-  lines.push(kotCentre("** KITCHEN COPY **"));
   // Extra feed lines so text clears the tear bar
-  for (let i = 0; i < 10; i++) lines.push(kotPadLine(""));
 
   const text = lines.join("\r\n");
 

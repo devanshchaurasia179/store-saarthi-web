@@ -21,9 +21,86 @@ export function OnboardingPage() {
   const [addressCity, setAddressCity] = useState(shop?.address?.city || '')
   const [addressState, setAddressState] = useState(shop?.address?.state || '')
   const [addressPincode, setAddressPincode] = useState(shop?.address?.pincode || '')
+  const [latitude, setLatitude] = useState<string>(shop?.address?.latitude?.toString() || '')
+  const [longitude, setLongitude] = useState<string>(shop?.address?.longitude?.toString() || '')
   const [gstNumber, setGstNumber] = useState(shop?.gstNumber || '')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [fetchingLocation, setFetchingLocation] = useState(false)
+  const [locationError, setLocationError] = useState('')
+
+  /**
+   * Uses watchPosition to collect multiple GPS readings and picks the most
+   * accurate one (lowest coords.accuracy). Stops after getting a reading
+   * with ≤30m accuracy OR after 20 seconds, whichever comes first.
+   */
+  function captureLocation(): Promise<{ lat: string; lng: string } | null> {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        setLocationError('Geolocation is not supported by your browser')
+        resolve(null)
+        return
+      }
+      setFetchingLocation(true)
+      setLocationError('')
+
+      const ACCURACY_THRESHOLD = 30 // meters — good enough for a shop address
+      const MAX_WAIT = 20000 // 20 seconds max
+
+      let bestPosition: GeolocationPosition | null = null
+      let watchId: number | null = null
+
+      function finish() {
+        if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+        if (bestPosition) {
+          const lat = bestPosition.coords.latitude.toFixed(7)
+          const lng = bestPosition.coords.longitude.toFixed(7)
+          setLatitude(lat)
+          setLongitude(lng)
+          setFetchingLocation(false)
+          resolve({ lat, lng })
+        } else {
+          setFetchingLocation(false)
+          setLocationError('Could not get an accurate location. Try again in an open area.')
+          resolve(null)
+        }
+      }
+
+      // Timeout fallback — use the best reading we have so far
+      const timer = setTimeout(finish, MAX_WAIT)
+
+      watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          // Keep the most accurate reading
+          if (!bestPosition || pos.coords.accuracy < bestPosition.coords.accuracy) {
+            bestPosition = pos
+            // Update UI in real-time so user sees progress
+            setLatitude(pos.coords.latitude.toFixed(7))
+            setLongitude(pos.coords.longitude.toFixed(7))
+          }
+          // If accuracy is good enough, stop early
+          if (pos.coords.accuracy <= ACCURACY_THRESHOLD) {
+            clearTimeout(timer)
+            finish()
+          }
+        },
+        (err) => {
+          clearTimeout(timer)
+          if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+          setFetchingLocation(false)
+          setLocationError(
+            err.code === err.PERMISSION_DENIED
+              ? 'Location permission denied. Please allow location access.'
+              : err.code === err.TIMEOUT
+                ? 'Location request timed out. Try again in an open area.'
+                : 'Unable to fetch location. Make sure GPS is enabled.',
+          )
+          resolve(null)
+        },
+        { enableHighAccuracy: true, timeout: MAX_WAIT, maximumAge: 0 },
+      )
+    })
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -36,6 +113,11 @@ export function OnboardingPage() {
 
     setBusy(true)
     try {
+      // Auto-capture location before saving
+      const captured = await captureLocation()
+      const finalLat = captured?.lat ?? latitude.trim()
+      const finalLng = captured?.lng ?? longitude.trim()
+
       const updated = await saveOnboarding({
         shopName: shopName.trim(),
         ownerName: ownerName.trim(),
@@ -46,6 +128,8 @@ export function OnboardingPage() {
           city: addressCity.trim(),
           state: addressState.trim(),
           pincode: addressPincode.trim(),
+          latitude: finalLat ? parseFloat(finalLat) : null,
+          longitude: finalLng ? parseFloat(finalLng) : null,
         },
         gstNumber: gstNumber.trim(),
       })
@@ -154,6 +238,37 @@ export function OnboardingPage() {
               disabled={busy}
             />
           </label>
+          <label>
+            Latitude
+            <input
+              value={latitude}
+              onChange={(e) => setLatitude(e.target.value)}
+              placeholder="Auto-captured"
+              disabled={busy}
+              readOnly
+            />
+          </label>
+          <label>
+            Longitude
+            <input
+              value={longitude}
+              onChange={(e) => setLongitude(e.target.value)}
+              placeholder="Auto-captured"
+              disabled={busy}
+              readOnly
+            />
+          </label>
+          <div className="auth-form__location-row">
+            <button
+              type="button"
+              className="auth-btn auth-btn--secondary"
+              onClick={() => captureLocation()}
+              disabled={busy || fetchingLocation}
+            >
+              {fetchingLocation ? 'Fetching…' : '📍 Capture Location'}
+            </button>
+            {locationError && <p className="auth-msg auth-msg--error">{locationError}</p>}
+          </div>
           <label>
             GST number (optional)
             <input

@@ -406,6 +406,29 @@
   border-radius: 20px;
 }
 
+/* —— Order Type Tags (Dine In / Delivery) —— */
+.orders-page__order-type-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 6px;
+}
+
+.orders-page__order-type-tag--dinein {
+  background: #FDF4FF;
+  color: #A21CAF;
+  border: 1px solid #F0ABFC;
+}
+
+.orders-page__order-type-tag--delivery {
+  background: #F0F9FF;
+  color: #0369A1;
+  border: 1px solid #7DD3FC;
+}
+
 .orders-page__badge--amber {
   background: #FFFBEB;
   color: #D97706;
@@ -705,5 +728,77 @@
   .orders-page__action-btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+
+/* —— Section Headers (New / Past Orders) —— */
+.orders-page__section {
+  margin-bottom: 32px;
+  animation: rise 0.45s ease 0.1s both;
+}
+
+.orders-page__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 0 4px;
+}
+
+.orders-page__section-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.orders-page__section-badge--new {
+  color: #D97706;
+}
+
+.orders-page__section-badge--past {
+  color: #6b7280;
+}
+
+.orders-page__section-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.orders-page__section-badge--new .orders-page__section-count {
+  background: #D97706;
+}
+
+.orders-page__section-badge--past .orders-page__section-count {
+  background: #6b7280;
+}
+
+.orders-page__section-desc {
+  font-size: 0.82rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* New orders section has a subtle highlight border */
+.orders-page__section-header--new + .orders-page__list .orders-page__card {
+  border-left: 3px solid #D97706;
+}
+
+@media (max-width: 768px) {
+  .orders-page__section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
   }
 }

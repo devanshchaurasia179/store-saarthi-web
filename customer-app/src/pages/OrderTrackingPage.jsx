@@ -88,16 +88,21 @@ export default function OrderTrackingPage() {
           </button>
           <div>
             <h1 className="font-heading text-xl font-bold text-gray-900">
-              Order Tracking
+              {order.orderType === 'dineIn' ? 'Dine In Order' : 'Order Tracking'}
             </h1>
             <p className="text-xs text-gray-400 font-mono">
               #{order._id?.slice(-8).toUpperCase()}
             </p>
           </div>
         </div>
-        <Badge variant={statusVariant}>
-          {ORDER_STATUS_LABELS[order.status] || order.status}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-md ${order.orderType === 'dineIn' ? 'bg-purple-50 text-purple-600 border border-purple-200' : 'bg-sky-50 text-sky-600 border border-sky-200'}`}>
+            {order.orderType === 'dineIn' ? 'Dine In' : 'Delivery'}
+          </span>
+          <Badge variant={statusVariant}>
+            {ORDER_STATUS_LABELS[order.status] || order.status}
+          </Badge>
+        </div>
       </div>
 
       {/* Timeline */}
@@ -126,9 +131,21 @@ export default function OrderTrackingPage() {
         </Section>
       )}
 
-      {/* Delivery address */}
-      {order.address && (
-        <Section title="Delivery Address" icon={MapPin}>
+      {/* Dine In / Delivery tag */}
+      <Section title={order.orderType === 'dineIn' ? 'Dine In' : 'Delivery'} icon={order.orderType === 'dineIn' ? Store : MapPin}>
+        {order.orderType === 'dineIn' ? (
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-purple-50 rounded-lg flex items-center justify-center shrink-0">
+              <Store className="w-4 h-4 text-purple-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-800">
+                Table No. {order.tableNumber || '—'}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">Dine In Order</p>
+            </div>
+          </div>
+        ) : order.address ? (
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center shrink-0 mt-0.5">
               <MapPin className="w-4 h-4 text-gray-500" />
@@ -150,8 +167,10 @@ export default function OrderTrackingPage() {
               </p>
             </div>
           </div>
-        </Section>
-      )}
+        ) : (
+          <p className="text-sm text-gray-400">No address provided</p>
+        )}
+      </Section>
 
       {/* Order Items */}
       <Section title="Order Items" icon={Package}>

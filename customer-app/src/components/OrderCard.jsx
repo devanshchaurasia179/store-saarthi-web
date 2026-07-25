@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronRight, Store, Package } from 'lucide-react'
+import { ChevronRight, Store, Package, UtensilsCrossed } from 'lucide-react'
 import Badge from './Badge'
 import { formatPrice } from '../utils/formatters'
 import { ORDER_STATUS_LABELS } from '../utils/constants'
@@ -9,6 +9,7 @@ export default function OrderCard({ order }) {
   const statusVariant = getStatusVariant(order.status)
   const itemCount = order.items?.length || 0
   const firstItem = order.items?.[0]
+  const isDineIn = order.orderType === 'dineIn'
 
   return (
     <motion.div
@@ -20,14 +21,23 @@ export default function OrderCard({ order }) {
         to={`/orders/${order._id}`}
         className="block bg-white rounded-2xl border border-gray-100 p-4 shadow-sm hover:shadow-md transition-shadow"
       >
-        {/* Top row: Shop + Status */}
+        {/* Top row: Shop + Status + Type Tag */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary-50 rounded-lg flex items-center justify-center">
-              <Store className="w-4 h-4 text-primary" />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDineIn ? 'bg-purple-50' : 'bg-primary-50'}`}>
+              {isDineIn ? (
+                <UtensilsCrossed className="w-4 h-4 text-purple-600" />
+              ) : (
+                <Store className="w-4 h-4 text-primary" />
+              )}
             </div>
             <span className="text-sm font-semibold text-gray-800 truncate max-w-[150px]">
-              {order.shop?.shopName || 'Shop'}
+              {isDineIn
+                ? `Table No. ${order.tableNumber || '—'}`
+                : (order.shop?.shopName || 'Shop')}
+            </span>
+            <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${isDineIn ? 'bg-purple-50 text-purple-600' : 'bg-sky-50 text-sky-600'}`}>
+              {isDineIn ? 'Dine In' : 'Delivery'}
             </span>
           </div>
           <Badge variant={statusVariant}>

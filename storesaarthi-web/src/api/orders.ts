@@ -45,6 +45,8 @@ export type OnlineOrder = {
   _id: string
   shop: string
   customer: OrderCustomer
+  orderType: 'delivery' | 'dineIn'
+  tableNumber: string
   items: OrderItem[]
   address: OrderAddress
   paymentMethod: 'COD' | 'UPI' | 'ONLINE'

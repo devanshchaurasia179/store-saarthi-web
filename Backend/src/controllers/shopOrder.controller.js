@@ -76,6 +76,16 @@ export async function getShopOrderById(req, res) {
       return res.status(404).json({ message: "Order not found" });
     }
 
+    // Decrypt bill fields if bill is populated
+    if (order.bill && typeof order.bill === "object") {
+      const ENCRYPTED_FIELDS = ["items", "subTotal", "discount", "taxPercentage", "totalAmount", "paidAmount"];
+      for (const field of ENCRYPTED_FIELDS) {
+        if (order.bill[field] !== undefined && order.bill[field] !== null) {
+          order.bill[field] = decrypt(order.bill[field]);
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
       order,

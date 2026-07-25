@@ -588,6 +588,10 @@ export async function onboard(req, res) {
       (filledFields / Object.keys(completionFields).length) * 100
     );
 
+    // Never reset isOnboarded to false once it's been set to true
+    const existingShop = await Shop.findById(shopId).select("isOnboarded").lean();
+    const isOnboarded = profileCompletion === 100 || (existingShop?.isOnboarded === true);
+
     const shop = await Shop.findByIdAndUpdate(
       shopId,
       {
@@ -598,7 +602,7 @@ export async function onboard(req, res) {
         upiId,
         address,
         profileCompletion,
-        isOnboarded: profileCompletion === 100,
+        isOnboarded,
       },
       { new: true }
     );
