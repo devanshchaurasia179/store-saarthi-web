@@ -31,7 +31,7 @@ import { Skeleton } from '../components/Skeleton'
 
 const ALL_PAYMENT_METHODS = [
   { id: 'cod', backendKey: 'COD', label: 'Cash on Delivery', icon: Banknote },
-  { id: 'upi', backendKey: 'UPI', label: 'UPI Payment', icon: Smartphone },
+  { id: 'upi', backendKey: 'UPI', label: 'Pay Online (UPI)', icon: Smartphone },
 ]
 
 export default function CheckoutPage() {
@@ -224,23 +224,22 @@ export default function CheckoutPage() {
     mutationFn: (orderData) => isDineIn
       ? orderService.createDineInOrder(orderData)
       : orderService.createOrder(orderData),
-    onSuccess: (res) => {
+    onSuccess: async (res) => {
       const orderId = res.data.order?._id || res.data.orderId
       const orderNumber = res.data.order?.orderNumber || res.data.orderNumber
 
-      // If UPI selected, open UPI payment intent
-      if (paymentMethod === 'upi' && shopDetails?.upiId) {
-        const upiLink = buildUpiLink({
-          upiId: shopDetails.upiId,
-          payeeName: shopName,
-          amount: grandTotal,
-          orderId: orderNumber || orderId,
-          customerName: user?.name || '',
-          customerPhone: user?.phone || '',
-        })
-        window.location.href = upiLink
+      // If UPI/online payment selected, initiate Razorpay Checkout
+      if (paymentMethod === 'upi') {
+        try {
+          await initiateRazorpayPayment(orderId, orderNumber)
+        } catch (err) {
+          // Payment was dismissed or failed — order is still created with pending payment
+          setError('Payment was not completed. You can retry from your orders page.')
+        }
+        return
       }
 
+      // COD — go directly to success
       clearCart()
       navigate('/order-success', {
         state: { orderId, orderNumber, estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '', orderType },
@@ -251,6 +250,66 @@ export default function CheckoutPage() {
       setError(err.response?.data?.message || 'Failed to place order. Please try again.')
     },
   })
+
+  // Razorpay payment flow
+  const initiateRazorpayPayment = async (orderId, orderNumber) => {
+    // 1. Create Razorpay order on backend
+    const payRes = await orderService.createPaymentOrder(orderId)
+    const { razorpayOrderId, amount, currency, keyId } = payRes.data
+
+    // 2. Open Razorpay Checkout
+    return new Promise((resolve, reject) => {
+      const options = {
+        key: keyId || import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount,
+        currency,
+        name: shopName || 'Store Saarthi',
+        description: `Order #${orderNumber || orderId}`,
+        order_id: razorpayOrderId,
+        prefill: {
+          name: user?.name || '',
+          contact: user?.phone || '',
+        },
+        theme: {
+          color: '#4F46E5',
+        },
+        handler: async function (response) {
+          try {
+            // 3. Verify payment on backend
+            await orderService.verifyPayment(orderId, {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+            })
+
+            // 4. Payment verified — navigate to success
+            clearCart()
+            navigate('/order-success', {
+              state: { orderId, orderNumber, estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '', orderType },
+              replace: true,
+            })
+            resolve()
+          } catch (verifyErr) {
+            setError('Payment was received but verification failed. Please contact support.')
+            reject(verifyErr)
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setError('Payment cancelled. Your order is saved — you can retry payment from your orders.')
+            reject(new Error('Payment dismissed'))
+          },
+        },
+      }
+
+      const rzp = new window.Razorpay(options)
+      rzp.on('payment.failed', function (response) {
+        setError(`Payment failed: ${response.error.description || 'Please try again.'}`)
+        reject(new Error(response.error.description))
+      })
+      rzp.open()
+    })
+  }
 
   const handlePlaceOrder = () => {
     setError('')
@@ -281,8 +340,8 @@ export default function CheckoutPage() {
       return
     }
 
-    if (paymentMethod === 'upi' && !shopDetails?.upiId) {
-      setError('This shop has not set up UPI payments yet. Please choose Cash on Delivery.')
+    if (paymentMethod === 'upi' && !import.meta.env.VITE_RAZORPAY_KEY_ID) {
+      setError('Online payment is not configured. Please choose Cash on Delivery.')
       return
     }
 
@@ -553,7 +612,7 @@ export default function CheckoutPage() {
             availablePaymentMethods.map((method) => {
               const Icon = method.icon
               const isSelected = paymentMethod === method.id
-              const isUpiUnavailable = method.id === 'upi' && !shopDetails?.upiId
+              const isUpiUnavailable = method.id === 'upi' && !import.meta.env.VITE_RAZORPAY_KEY_ID
               const disabled = isUpiUnavailable
               return (
                 <button
@@ -579,14 +638,14 @@ export default function CheckoutPage() {
                     <span className="text-sm font-medium text-gray-800">
                       {method.label}
                     </span>
-                    {method.id === 'upi' && shopDetails?.upiId && (
+                    {method.id === 'upi' && import.meta.env.VITE_RAZORPAY_KEY_ID && (
                       <p className="text-xs text-gray-400 truncate mt-0.5">
-                        Pay to: {shopDetails.upiId}
+                        UPI, Cards, Netbanking & more
                       </p>
                     )}
                     {isUpiUnavailable && (
                       <p className="text-xs text-gray-400 mt-0.5">
-                        UPI not configured for this shop
+                        Online payment not configured
                       </p>
                     )}
                   </div>
@@ -708,21 +767,6 @@ export default function CheckoutPage() {
       </BottomSheet>
     </motion.div>
   )
-}
-
-/* ================================
-   UPI Deep Link Builder
-================================ */
-function buildUpiLink({ upiId, payeeName, amount, orderId, customerName, customerPhone }) {
-  const tn = [`Order #${orderId}`, customerName, customerPhone].filter(Boolean).join(' | ')
-  const params = new URLSearchParams({
-    pa: upiId,
-    pn: payeeName,
-    am: amount.toFixed(2),
-    cu: 'INR',
-    tn,
-  })
-  return `upi://pay?${params.toString()}`
 }
 
 /* ================================
