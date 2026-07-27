@@ -7,6 +7,10 @@ import {
   getCustomerOrders,
   cancelOrder,
 } from "../controllers/order.controller.js";
+import {
+  createPaymentOrder,
+  verifyPayment,
+} from "../controllers/payment.controller.js";
 
 const router = express.Router();
 
@@ -20,5 +24,9 @@ router.post("/", protectCustomerRoute, createOrder);
 router.get("/", protectCustomerRoute, getCustomerOrders);
 router.get("/:id", protectCustomerRoute, getOrderById);
 router.patch("/:id/cancel", protectCustomerRoute, cancelOrder);
+
+// Payment routes (Razorpay)
+router.post("/:id/pay", protectCustomerRoute, createPaymentOrder);
+router.post("/:id/verify-payment", protectCustomerRoute, verifyPayment);
 
 export default router;
