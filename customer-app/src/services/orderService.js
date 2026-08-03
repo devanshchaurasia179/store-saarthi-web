@@ -7,7 +7,7 @@ export const orderService = {
   getOrderById: (id) => api.get(`/orders/${id}`),
   cancelOrder: (id) => api.patch(`/orders/${id}/cancel`),
 
-  // Razorpay payment
-  createPaymentOrder: (orderId) => api.post(`/orders/${orderId}/pay`),
-  verifyPayment: (orderId, paymentData) => api.post(`/orders/${orderId}/verify-payment`, paymentData),
+  // Direct UPI payment (no gateway)
+  confirmUpiPayment: (orderId, upiRef = '') =>
+    api.post(`/orders/${orderId}/confirm-upi`, { upiRef }),
 }

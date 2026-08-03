@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react'
+﻿import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -17,7 +17,14 @@ import {
   AlertCircle,
   UtensilsCrossed,
   User,
+  Search,
+  X,
+  Navigation,
+  CheckCircle2,
+  Copy,
+  ExternalLink,
 } from 'lucide-react'
+import { configureMaps, importLibrary } from '../utils/maps'
 import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useShopDetails } from '../hooks/useShop'
@@ -29,10 +36,289 @@ import AddressCard from '../components/AddressCard'
 import BottomSheet from '../components/BottomSheet'
 import { Skeleton } from '../components/Skeleton'
 
+configureMaps()
+
+const ADDRESS_LABELS = ['Home', 'Work', 'Other']
+
 const ALL_PAYMENT_METHODS = [
   { id: 'cod', backendKey: 'COD', label: 'Cash on Delivery', icon: Banknote },
   { id: 'upi', backendKey: 'UPI', label: 'Pay Online (UPI)', icon: Smartphone },
 ]
+
+/* ================================
+   Compact inline address form with Google Maps
+================================ */
+function InlineAddressForm({ value, onChange }) {
+  const [mapsReady, setMapsReady] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
+  const [showResults, setShowResults] = useState(false)
+  const [locating, setLocating] = useState(false)
+  const [locationError, setLocationError] = useState('')
+
+  const mapRef = useRef(null)
+  const googleMapRef = useRef(null)
+  const markerRef = useRef(null)
+  const geocoderRef = useRef(null)
+  const autocompleteRef = useRef(null)
+  const searchTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    Promise.all([
+      importLibrary('maps'),
+      importLibrary('places'),
+      importLibrary('geocoding'),
+    ]).then(() => setMapsReady(true)).catch(console.error)
+  }, [])
+
+  // Helpers
+  const extractCity = (components) => {
+    const get = (t) => components.find((c) => c.types.includes(t))?.long_name || ''
+    return get('locality') || get('administrative_area_level_3') || get('administrative_area_level_2') || get('sublocality_level_1') || ''
+  }
+  const buildAddress = (formatted) => {
+    if (!formatted) return ''
+    return formatted.split(',').map((p) => p.trim()).filter((p) => p.toLowerCase() !== 'india').slice(0, 4).join(', ')
+  }
+
+  const applyGeoResult = useCallback((result, lat, lng) => {
+    const components = result.address_components
+    const get = (t) => components.find((c) => c.types.includes(t))?.long_name || ''
+    onChange((prev) => ({
+      ...prev,
+      latitude: lat,
+      longitude: lng,
+      fullAddress: buildAddress(result.formatted_address) || prev.fullAddress,
+      city: extractCity(components) || prev.city,
+      state: get('administrative_area_level_1') || prev.state,
+      pincode: get('postal_code') || prev.pincode,
+    }))
+  }, [onChange])
+
+  const placeMarker = useCallback((lat, lng, mapInstance) => {
+    const map = mapInstance || googleMapRef.current
+    if (!map) return
+    const pos = { lat, lng }
+    if (markerRef.current) {
+      markerRef.current.setPosition(pos)
+    } else {
+      markerRef.current = new window.google.maps.Marker({ position: pos, map, draggable: true })
+      markerRef.current.addListener('dragend', () => {
+        const p = markerRef.current.getPosition()
+        reverseGeocode(p.lat(), p.lng())
+      })
+    }
+    map.panTo(pos)
+    if (map.getZoom() < 15) map.setZoom(17)
+  }, [])
+
+  const reverseGeocode = useCallback((lat, lng) => {
+    if (!geocoderRef.current) return
+    geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === 'OK' && results[0]) applyGeoResult(results[0], lat, lng)
+    })
+  }, [applyGeoResult])
+
+  // Init map
+  useEffect(() => {
+    if (!mapsReady || !mapRef.current || googleMapRef.current) return
+    const center = value.latitude && value.longitude
+      ? { lat: value.latitude, lng: value.longitude }
+      : { lat: 20.5937, lng: 78.9629 }
+    const zoom = value.latitude && value.longitude ? 17 : 5
+    const map = new window.google.maps.Map(mapRef.current, {
+      center, zoom,
+      zoomControl: true, streetViewControl: false, mapTypeControl: false, fullscreenControl: false,
+    })
+    if (value.latitude && value.longitude) {
+      markerRef.current = new window.google.maps.Marker({ position: center, map, draggable: true })
+      markerRef.current.addListener('dragend', () => {
+        const p = markerRef.current.getPosition()
+        reverseGeocode(p.lat(), p.lng())
+      })
+    }
+    map.addListener('click', (e) => {
+      const lat = e.latLng.lat(), lng = e.latLng.lng()
+      placeMarker(lat, lng, map)
+      reverseGeocode(lat, lng)
+    })
+    googleMapRef.current = map
+    geocoderRef.current = new window.google.maps.Geocoder()
+    autocompleteRef.current = new window.google.maps.places.AutocompleteService()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapsReady])
+
+  // Search
+  const handleSearch = useCallback((query) => {
+    setSearchQuery(query)
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
+    if (!query.trim() || query.length < 3) { setSearchResults([]); setShowResults(false); return }
+    searchTimeoutRef.current = setTimeout(() => {
+      if (!autocompleteRef.current) return
+      setSearching(true)
+      autocompleteRef.current.getPlacePredictions(
+        { input: query, componentRestrictions: { country: 'in' }, types: ['geocode', 'establishment'] },
+        (predictions, status) => {
+          setSearching(false)
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+            setSearchResults(predictions); setShowResults(true)
+          } else setSearchResults([])
+        }
+      )
+    }, 400)
+  }, [])
+
+  const selectPrediction = (prediction) => {
+    if (!geocoderRef.current) return
+    setSearchQuery(prediction.description.split(',').slice(0, 2).join(', '))
+    setShowResults(false); setSearchResults([])
+    geocoderRef.current.geocode({ placeId: prediction.place_id }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        const loc = results[0].geometry.location
+        const lat = loc.lat(), lng = loc.lng()
+        applyGeoResult(results[0], lat, lng)
+        placeMarker(lat, lng)
+        const map = googleMapRef.current
+        if (map) { map.panTo({ lat, lng }); map.setZoom(17) }
+      }
+    })
+  }
+
+  // GPS
+  const handleGPS = () => {
+    if (!navigator.geolocation) { setLocationError('Geolocation not supported'); return }
+    setLocating(true); setLocationError('')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords
+        placeMarker(lat, lng)
+        reverseGeocode(lat, lng)
+        onChange((prev) => ({ ...prev, latitude: lat, longitude: lng }))
+        setLocating(false)
+      },
+      (err) => {
+        setLocating(false)
+        setLocationError(err.code === 1 ? 'Location permission denied.' : 'Unable to get location.')
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    )
+  }
+
+  const hasLocation = value.latitude && value.longitude
+
+  return (
+    <div className="space-y-3">
+      {/* Label selector */}
+      <div className="flex gap-2">
+        {ADDRESS_LABELS.map((lbl) => (
+          <button
+            key={lbl}
+            type="button"
+            onClick={() => onChange((prev) => ({ ...prev, label: lbl }))}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              value.label === lbl ? 'bg-primary text-white shadow-sm' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {lbl}
+          </button>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => handleSearch(e.target.value)}
+          onFocus={() => searchResults.length > 0 && setShowResults(true)}
+          placeholder="Search your location..."
+          className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+        />
+        {searching
+          ? <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 animate-spin" />
+          : searchQuery && (
+            <button type="button" onClick={() => { setSearchQuery(''); setSearchResults([]); setShowResults(false) }} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <X className="w-3.5 h-3.5 text-gray-400" />
+            </button>
+          )
+        }
+        {showResults && searchResults.length > 0 && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
+            {searchResults.map((p, idx) => (
+              <button key={p.place_id || idx} type="button" onClick={() => selectPrediction(p)}
+                className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors">
+                <p className="text-xs font-medium text-gray-800 line-clamp-1">{p.structured_formatting?.main_text || p.description.split(',')[0]}</p>
+                <p className="text-xs text-gray-400 line-clamp-1">{p.description}</p>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* GPS button */}
+      <button
+        type="button"
+        onClick={handleGPS}
+        disabled={locating}
+        className={`w-full flex items-center gap-2 px-3 py-2.5 border border-dashed rounded-xl text-xs font-medium transition-colors ${
+          hasLocation ? 'border-green-400 bg-green-50/50 text-green-700' : 'border-primary/40 text-primary hover:bg-primary/5'
+        } disabled:opacity-60`}
+      >
+        {locating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : hasLocation ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <Navigation className="w-3.5 h-3.5" />}
+        {locating ? 'Getting location...' : hasLocation ? 'Location set â€” tap to update' : 'Use current location'}
+      </button>
+      {locationError && <p className="text-xs text-red-500">{locationError}</p>}
+
+      {/* Compact map */}
+      <div className="rounded-xl overflow-hidden border border-gray-200">
+        {!mapsReady
+          ? <div className="h-[160px] flex items-center justify-center bg-gray-50"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+          : <div ref={mapRef} style={{ height: '160px', width: '100%' }} />
+        }
+        {hasLocation && (
+          <p className="text-xs text-gray-400 px-3 py-1 bg-gray-50 border-t border-gray-100">
+            ðŸ“ {value.latitude.toFixed(5)}, {value.longitude.toFixed(5)} â€” drag pin or tap to adjust
+          </p>
+        )}
+      </div>
+
+      {/* Address fields */}
+      <input
+        type="text"
+        value={value.fullAddress}
+        onChange={(e) => onChange((prev) => ({ ...prev, fullAddress: e.target.value }))}
+        placeholder="Full address *"
+        className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+      />
+      <input
+        type="text"
+        value={value.houseNumber}
+        onChange={(e) => onChange((prev) => ({ ...prev, houseNumber: e.target.value }))}
+        placeholder="House / Flat No. (optional)"
+        className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          type="text"
+          value={value.city}
+          onChange={(e) => onChange((prev) => ({ ...prev, city: e.target.value }))}
+          placeholder="City *"
+          className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+        />
+        <input
+          type="text"
+          inputMode="numeric"
+          value={value.pincode}
+          onChange={(e) => onChange((prev) => ({ ...prev, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
+          placeholder="Pincode *"
+          className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
+        />
+      </div>
+    </div>
+  )
+}
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
@@ -46,7 +332,7 @@ export default function CheckoutPage() {
   const tableNumber = location.state?.tableNumber || ''
   const isDineIn = orderType === 'dineIn'
 
-  // Delivery orders require login — redirect inside useEffect
+  // Delivery orders require login â€” redirect inside useEffect
   const needsLogin = !isDineIn && !isAuthenticated
   useEffect(() => {
     if (needsLogin) {
@@ -71,7 +357,10 @@ export default function CheckoutPage() {
     houseNumber: '',
     landmark: '',
     city: '',
+    state: '',
     pincode: '',
+    latitude: null,
+    longitude: null,
   })
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError] = useState('')
@@ -131,61 +420,27 @@ export default function CheckoutPage() {
       return
     }
 
-    if (!newAddress.fullAddress.trim()) {
-      setProfileError('Please enter your full address')
-      return
+    if (addresses.length === 0) {
+      if (!newAddress.fullAddress.trim()) {
+        setProfileError('Please enter your full address')
+        return
+      }
+      if (!newAddress.city.trim()) {
+        setProfileError('Please enter your city')
+        return
+      }
+      if (!newAddress.pincode.trim() || !/^\d{6}$/.test(newAddress.pincode)) {
+        setProfileError('Please enter a valid 6-digit pincode')
+        return
+      }
+      if (!newAddress.latitude || !newAddress.longitude) {
+        setProfileError('Please pin your location on the map or use GPS')
+        return
+      }
     }
 
     setProfileSaving(true)
     try {
-      // Silently get user's current location (high accuracy with retry)
-      let latitude = null
-      let longitude = null
-      try {
-        // First attempt with high accuracy (GPS)
-        let position
-        try {
-          position = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              timeout: 15000,
-              maximumAge: 0,
-            })
-          })
-        } catch (firstErr) {
-          // If high accuracy fails (timeout on desktop), retry with lower accuracy
-          if (firstErr.code === firstErr.TIMEOUT) {
-            position = await new Promise((resolve, reject) => {
-              navigator.geolocation.getCurrentPosition(resolve, reject, {
-                enableHighAccuracy: false,
-                timeout: 10000,
-                maximumAge: 60000,
-              })
-            })
-          } else {
-            throw firstErr
-          }
-        }
-
-        latitude = position.coords.latitude
-        longitude = position.coords.longitude
-
-        // Reject if accuracy is worse than 500 meters (too vague)
-        if (position.coords.accuracy > 500) {
-          setProfileSaving(false)
-          setProfileError('Unable to get accurate location. Please ensure GPS is enabled and try again.')
-          return
-        }
-      } catch (locErr) {
-        setProfileSaving(false)
-        if (locErr.code === 1) {
-          setProfileError('Location permission denied. Please allow location access in your browser settings for delivery.')
-        } else {
-          setProfileError('Unable to get your location. Please enable GPS/location services and try again.')
-        }
-        return
-      }
-
       // Save name if missing
       if (!user?.name) {
         const profileRes = await authService.updateProfile({ name: profileName.trim() })
@@ -197,13 +452,10 @@ export default function CheckoutPage() {
         const addressRes = await addressService.addAddress({
           ...newAddress,
           fullAddress: newAddress.fullAddress.trim(),
-          latitude,
-          longitude,
           isDefault: true,
         })
         queryClient.setQueryData(['addresses'], addressRes.data.addresses)
         updateUser((prev) => ({ ...prev, addresses: addressRes.data.addresses }))
-        // Auto-select the newly added address
         if (addressRes.data.addresses.length > 0) {
           setSelectedAddress(addressRes.data.addresses[0])
         }
@@ -219,6 +471,8 @@ export default function CheckoutPage() {
   const deliveryCharge = isDineIn ? 0 : ((shopFreeDeliveryAbove > 0 && subtotal >= shopFreeDeliveryAbove) ? 0 : shopDeliveryCharge)
   const grandTotal = subtotal + deliveryCharge
 
+  const [upiPayment, setUpiPayment] = useState(null) // { orderId, orderNumber, upiId, payeeName, amount }
+
   // Place order mutation
   const orderMutation = useMutation({
     mutationFn: (orderData) => isDineIn
@@ -228,21 +482,23 @@ export default function CheckoutPage() {
       const orderId = res.data.order?._id || res.data.orderId
       const orderNumber = res.data.order?.orderNumber || res.data.orderNumber
 
-      // If UPI/online payment selected, initiate Razorpay Checkout
+      // If UPI payment selected, show payment screen using already-loaded shop details
+      // (no extra backend call needed â€” upiId and grandTotal are already on the client)
       if (paymentMethod === 'upi') {
-        try {
-          await initiateRazorpayPayment(orderId, orderNumber)
-        } catch (err) {
-          // Payment was dismissed or failed — order is still created with pending payment
-          setError('Payment was not completed. You can retry from your orders page.')
-        }
+        setUpiPayment({
+          orderId,
+          orderNumber,
+          upiId: shopDetails?.upiId || '',
+          payeeName: shopDetails?.shopName || shopName || '',
+          amount: grandTotal,
+        })
         return
       }
 
-      // COD — go directly to success
+      // COD â€” go directly to success
       clearCart()
       navigate('/order-success', {
-        state: { orderId, orderNumber, estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '', orderType },
+        state: { orderId, orderNumber, estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '', orderType, orderStatus: res.data.order?.status || 'pending' },
         replace: true,
       })
     },
@@ -251,63 +507,18 @@ export default function CheckoutPage() {
     },
   })
 
-  // Razorpay payment flow
-  const initiateRazorpayPayment = async (orderId, orderNumber) => {
-    // 1. Create Razorpay order on backend
-    const payRes = await orderService.createPaymentOrder(orderId)
-    const { razorpayOrderId, amount, currency, keyId } = payRes.data
-
-    // 2. Open Razorpay Checkout
-    return new Promise((resolve, reject) => {
-      const options = {
-        key: keyId || import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount,
-        currency,
-        name: shopName || 'Store Saarthi',
-        description: `Order #${orderNumber || orderId}`,
-        order_id: razorpayOrderId,
-        prefill: {
-          name: user?.name || '',
-          contact: user?.phone || '',
-        },
-        theme: {
-          color: '#4F46E5',
-        },
-        handler: async function (response) {
-          try {
-            // 3. Verify payment on backend
-            await orderService.verifyPayment(orderId, {
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-            })
-
-            // 4. Payment verified — navigate to success
-            clearCart()
-            navigate('/order-success', {
-              state: { orderId, orderNumber, estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '', orderType },
-              replace: true,
-            })
-            resolve()
-          } catch (verifyErr) {
-            setError('Payment was received but verification failed. Please contact support.')
-            reject(verifyErr)
-          }
-        },
-        modal: {
-          ondismiss: function () {
-            setError('Payment cancelled. Your order is saved — you can retry payment from your orders.')
-            reject(new Error('Payment dismissed'))
-          },
-        },
-      }
-
-      const rzp = new window.Razorpay(options)
-      rzp.on('payment.failed', function (response) {
-        setError(`Payment failed: ${response.error.description || 'Please try again.'}`)
-        reject(new Error(response.error.description))
-      })
-      rzp.open()
+  // Called after customer taps "Open UPI App" â€” go straight to order success
+  const handleUpiOpen = () => {
+    if (!upiPayment) return
+    clearCart()
+    navigate('/order-success', {
+      state: {
+        orderId: upiPayment.orderId,
+        orderNumber: upiPayment.orderNumber,
+        estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '',
+        orderType,
+      },
+      replace: true,
     })
   }
 
@@ -340,8 +551,8 @@ export default function CheckoutPage() {
       return
     }
 
-    if (paymentMethod === 'upi' && !import.meta.env.VITE_RAZORPAY_KEY_ID) {
-      setError('Online payment is not configured. Please choose Cash on Delivery.')
+    if (paymentMethod === 'upi' && !shopDetails?.upiId) {
+      setError('This shop has not configured a UPI ID. Please choose Cash on Delivery.')
       return
     }
 
@@ -407,6 +618,18 @@ export default function CheckoutPage() {
     )
   }
 
+  // UPI payment screen â€” shown after order is created
+  if (upiPayment) {
+    return (
+      <UpiPaymentScreen
+        upiId={upiPayment.upiId}
+        payeeName={upiPayment.payeeName}
+        amount={upiPayment.amount}
+        onOpen={handleUpiOpen}
+      />
+    )
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -440,7 +663,7 @@ export default function CheckoutPage() {
                   {item.name}
                 </p>
                 <p className="text-xs text-gray-400">
-                  {formatPrice(item.price)} × {item.quantity}
+                  {formatPrice(item.price)} Ã— {item.quantity}
                 </p>
               </div>
               <span className="text-sm font-semibold text-gray-900 shrink-0 ml-3">
@@ -484,63 +707,7 @@ export default function CheckoutPage() {
             )}
 
             {addresses.length === 0 && (
-              <>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 mb-1 block">Full Address</label>
-                  <input
-                    type="text"
-                    value={newAddress.fullAddress}
-                    onChange={(e) => setNewAddress((a) => ({ ...a, fullAddress: e.target.value }))}
-                    placeholder="Street, area, locality"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">House / Flat No.</label>
-                    <input
-                      type="text"
-                      value={newAddress.houseNumber}
-                      onChange={(e) => setNewAddress((a) => ({ ...a, houseNumber: e.target.value }))}
-                      placeholder="e.g. B-204"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">Landmark</label>
-                    <input
-                      type="text"
-                      value={newAddress.landmark}
-                      onChange={(e) => setNewAddress((a) => ({ ...a, landmark: e.target.value }))}
-                      placeholder="Near..."
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">City</label>
-                    <input
-                      type="text"
-                      value={newAddress.city}
-                      onChange={(e) => setNewAddress((a) => ({ ...a, city: e.target.value }))}
-                      placeholder="City"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 mb-1 block">Pincode</label>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={newAddress.pincode}
-                      onChange={(e) => setNewAddress((a) => ({ ...a, pincode: e.target.value.replace(/\D/g, '').slice(0, 6) }))}
-                      placeholder="6-digit"
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-primary focus:bg-white transition-all"
-                    />
-                  </div>
-                </div>
-              </>
+              <InlineAddressForm value={newAddress} onChange={setNewAddress} />
             )}
 
             {profileError && (
@@ -553,11 +720,7 @@ export default function CheckoutPage() {
               disabled={profileSaving}
               className="w-full py-3 bg-primary text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 hover:bg-primary-light transition-colors disabled:opacity-50 shadow-md shadow-primary/20"
             >
-              {profileSaving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                'Save & Continue'
-              )}
+              {profileSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save & Continue'}
             </motion.button>
           </div>
         </Section>
@@ -612,7 +775,7 @@ export default function CheckoutPage() {
             availablePaymentMethods.map((method) => {
               const Icon = method.icon
               const isSelected = paymentMethod === method.id
-              const isUpiUnavailable = method.id === 'upi' && !import.meta.env.VITE_RAZORPAY_KEY_ID
+              const isUpiUnavailable = method.id === 'upi' && !shopDetails?.upiId
               const disabled = isUpiUnavailable
               return (
                 <button
@@ -638,14 +801,14 @@ export default function CheckoutPage() {
                     <span className="text-sm font-medium text-gray-800">
                       {method.label}
                     </span>
-                    {method.id === 'upi' && import.meta.env.VITE_RAZORPAY_KEY_ID && (
+                    {method.id === 'upi' && shopDetails?.upiId && (
                       <p className="text-xs text-gray-400 truncate mt-0.5">
-                        UPI, Cards, Netbanking & more
+                        Pay directly via any UPI app
                       </p>
                     )}
                     {isUpiUnavailable && (
                       <p className="text-xs text-gray-400 mt-0.5">
-                        Online payment not configured
+                        UPI not configured by this shop
                       </p>
                     )}
                   </div>
@@ -765,6 +928,78 @@ export default function CheckoutPage() {
           </button>
         </div>
       </BottomSheet>
+    </motion.div>
+  )
+}
+
+/* ================================
+   UPI Payment Screen
+================================ */
+function UpiPaymentScreen({ upiId, payeeName, amount, onOpen }) {
+  const [copied, setCopied] = useState(false)
+
+  // Build UPI deep-link â€” no `tn` (transaction note) to avoid bank blocks
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR`
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(upiId).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-lg mx-auto px-4 py-8"
+    >
+      {/* Icon */}
+      <div className="flex flex-col items-center mb-8">
+        <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mb-4">
+          <Smartphone className="w-10 h-10 text-indigo-500" />
+        </div>
+        <h1 className="font-heading text-2xl font-bold text-gray-900 text-center">Pay via UPI</h1>
+        <p className="text-sm text-gray-400 mt-1 text-center">
+          Open any UPI app and pay to complete your order
+        </p>
+      </div>
+
+      {/* Amount */}
+      <div className="bg-indigo-50 rounded-2xl p-5 mb-5 text-center">
+        <p className="text-xs text-indigo-400 font-medium uppercase tracking-wide mb-1">Amount to Pay</p>
+        <p className="text-4xl font-bold text-indigo-700">â‚¹{Number(amount).toLocaleString('en-IN')}</p>
+        <p className="text-sm text-indigo-400 mt-1">to {payeeName}</p>
+      </div>
+
+      {/* UPI ID */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5 shadow-sm">
+        <p className="text-xs font-medium text-gray-400 mb-2">UPI ID</p>
+        <div className="flex items-center gap-3">
+          <p className="flex-1 text-base font-semibold text-gray-800 break-all">{upiId}</p>
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium text-gray-600 transition-colors shrink-0"
+          >
+            {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? 'Copied' : 'Copy'}
+          </button>
+        </div>
+      </div>
+
+      {/* Open UPI App â€” tapping this also navigates to order success */}
+      <a
+        href={upiUrl}
+        onClick={onOpen}
+        className="w-full flex items-center justify-center gap-2 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-semibold text-base transition-colors shadow-lg shadow-indigo-200"
+      >
+        <ExternalLink className="w-5 h-5" />
+        Open UPI App to Pay
+      </a>
+
+      <p className="text-xs text-gray-400 text-center mt-3">
+        Opens GPay, PhonePe, Paytm or your default UPI app
+      </p>
     </motion.div>
   )
 }

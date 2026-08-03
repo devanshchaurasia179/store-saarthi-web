@@ -1,15 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
+import { configureMaps, importLibrary } from '../utils/maps'
 import { MapPin, Loader2, Navigation, CheckCircle2, Search, X } from 'lucide-react'
-import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
+
+configureMaps()
 
 const LABELS = ['Home', 'Work', 'Other']
 const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629 } // India center
 const DEFAULT_ZOOM = 5
-const MAPS_KEY = import.meta.env.VITE_MAPS_KEY
-
-// Configure once — safe to call multiple times
-setOptions({ apiKey: MAPS_KEY, version: 'weekly' })
 
 export default function AddressForm({ initialData = null, onSubmit, onCancel, loading = false }) {
   const [form, setForm] = useState({

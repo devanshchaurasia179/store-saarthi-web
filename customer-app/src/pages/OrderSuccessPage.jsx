@@ -3,12 +3,25 @@ import { motion } from 'framer-motion'
 import { CheckCircle, Package, ArrowRight, ShoppingBag, UtensilsCrossed, Clock } from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 
+const STATUS_LABELS = {
+  pending: { label: 'Pending Confirmation', color: 'text-amber-600 bg-amber-50' },
+  accepted: { label: 'Accepted', color: 'text-blue-600 bg-blue-50' },
+  rejected: { label: 'Rejected', color: 'text-red-600 bg-red-50' },
+  packing: { label: 'Packing', color: 'text-indigo-600 bg-indigo-50' },
+  ready: { label: 'Ready', color: 'text-cyan-600 bg-cyan-50' },
+  out_for_delivery: { label: 'Out for Delivery', color: 'text-orange-600 bg-orange-50' },
+  delivered: { label: 'Delivered', color: 'text-green-600 bg-green-50' },
+  cancelled: { label: 'Cancelled', color: 'text-red-600 bg-red-50' },
+}
+
 export default function OrderSuccessPage() {
   const location = useLocation()
-  const { orderId, estimatedDeliveryTime, orderType } = location.state || {}
+  const { orderId, estimatedDeliveryTime, orderType, orderStatus } = location.state || {}
   const { shopId, shopName } = useCart()
 
   const isDineIn = orderType === 'dineIn'
+  const statusKey = orderStatus || 'pending'
+  const statusDisplay = STATUS_LABELS[statusKey] || { label: statusKey, color: 'text-amber-600 bg-amber-50' }
 
   return (
     <motion.div
@@ -99,9 +112,9 @@ export default function OrderSuccessPage() {
             <span className={`font-medium px-2 py-0.5 rounded-md text-xs ${
               isDineIn
                 ? 'text-amber-600 bg-amber-50'
-                : 'text-amber-600 bg-amber-50'
+                : statusDisplay.color
             }`}>
-              {isDineIn ? 'Preparing' : 'Pending Confirmation'}
+              {isDineIn ? 'Preparing' : statusDisplay.label}
             </span>
           </div>
           {isDineIn ? (
