@@ -1,21 +1,15 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { MapPin, Loader2, Navigation, CheckCircle2, Search, X } from 'lucide-react'
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-
-// Fix Leaflet default marker icon issue with bundlers
-delete L.Icon.Default.prototype._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-})
+import { setOptions, importLibrary } from '@googlemaps/js-api-loader'
 
 const LABELS = ['Home', 'Work', 'Other']
-const DEFAULT_CENTER = [20.5937, 78.9629] // India center
+const DEFAULT_CENTER = { lat: 20.5937, lng: 78.9629 } // India center
 const DEFAULT_ZOOM = 5
+const MAPS_KEY = import.meta.env.VITE_MAPS_KEY
+
+// Configure once — safe to call multiple times
+setOptions({ apiKey: MAPS_KEY, version: 'weekly' })
 
 export default function AddressForm({ initialData = null, onSubmit, onCancel, loading = false }) {
   const [form, setForm] = useState({
@@ -37,7 +31,68 @@ export default function AddressForm({ initialData = null, onSubmit, onCancel, lo
   const [searchResults, setSearchResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [showResults, setShowResults] = useState(false)
+  const [mapsReady, setMapsReady] = useState(false)
+
+  const mapRef = useRef(null)         // DOM node for the map div
+  const googleMapRef = useRef(null)   // google.maps.Map instance
+  const markerRef = useRef(null)      // google.maps.Marker instance
+  const geocoderRef = useRef(null)    // google.maps.Geocoder instance
+  const autocompleteServiceRef = useRef(null) // AutocompleteService
   const searchTimeoutRef = useRef(null)
+
+  // Load Google Maps libraries once on mount
+  useEffect(() => {
+    Promise.all([
+      importLibrary('maps'),
+      importLibrary('places'),
+      importLibrary('geocoding'),
+    ])
+      .then(() => setMapsReady(true))
+      .catch((err) => console.error('Google Maps failed to load', err))
+  }, [])
+
+  // Initialise map after API is ready and the div is rendered
+  useEffect(() => {
+    if (!mapsReady || !mapRef.current || googleMapRef.current) return
+
+    const center = form.latitude && form.longitude
+      ? { lat: form.latitude, lng: form.longitude }
+      : DEFAULT_CENTER
+    const zoom = form.latitude && form.longitude ? 17 : DEFAULT_ZOOM
+
+    const map = new window.google.maps.Map(mapRef.current, {
+      center,
+      zoom,
+      disableDefaultUI: false,
+      zoomControl: true,
+      streetViewControl: false,
+      mapTypeControl: false,
+      fullscreenControl: false,
+    })
+
+    // Place a marker if we already have a position (edit mode)
+    if (form.latitude && form.longitude) {
+      markerRef.current = new window.google.maps.Marker({
+        position: center,
+        map,
+        draggable: true,
+      })
+      markerRef.current.addListener('dragend', () => {
+        const pos = markerRef.current.getPosition()
+        handlePositionChange(pos.lat(), pos.lng())
+      })
+    }
+
+    // Click on map → move/create marker
+    map.addListener('click', (e) => {
+      handlePositionChange(e.latLng.lat(), e.latLng.lng(), map)
+    })
+
+    googleMapRef.current = map
+    geocoderRef.current = new window.google.maps.Geocoder()
+    autocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapsReady])
 
   const handleChange = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }))
@@ -63,36 +118,77 @@ export default function AddressForm({ initialData = null, onSubmit, onCancel, lo
     onSubmit(form)
   }
 
-  // Reverse geocode using Nominatim (free, no key)
-  const reverseGeocode = useCallback((lat, lng) => {
-    fetch(
-      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,
-      { headers: { 'Accept-Language': 'en' } }
+  // Extract city from Google address components — locality wins over sublocality/district
+  const extractCity = (components) => {
+    const get = (type) => components.find((c) => c.types.includes(type))?.long_name || ''
+    return (
+      get('locality') ||                      // e.g. Jalandhar, Delhi
+      get('administrative_area_level_3') ||   // tehsil / taluka
+      get('administrative_area_level_2') ||   // district
+      get('sublocality_level_1') ||           // neighbourhood (last resort)
+      ''
     )
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.address) {
-          const addr = data.address
-          setForm((prev) => ({
-            ...prev,
-            fullAddress: data.display_name?.split(',').slice(0, 4).join(', ') || prev.fullAddress,
-            city: addr.city || addr.town || addr.village || addr.county || prev.city,
-            state: addr.state || prev.state,
-            pincode: addr.postcode || prev.pincode,
-          }))
-        }
-      })
-      .catch(() => {})
+  }
+
+  // Build a clean address string: skip country and strip dupes
+  const buildAddress = (formatted) => {
+    if (!formatted) return ''
+    const parts = formatted.split(',').map((p) => p.trim())
+    // Drop last part if it's just "India"
+    const filtered = parts.filter((p) => p.toLowerCase() !== 'india')
+    return filtered.slice(0, 4).join(', ')
+  }
+
+  // Reverse geocode using Google Geocoding API
+  const reverseGeocode = useCallback((lat, lng) => {
+    if (!geocoderRef.current) return
+    geocoderRef.current.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        const components = results[0].address_components
+        const get = (type) => components.find((c) => c.types.includes(type))?.long_name || ''
+        setForm((prev) => ({
+          ...prev,
+          fullAddress: buildAddress(results[0].formatted_address) || prev.fullAddress,
+          city: extractCity(components) || prev.city,
+          state: get('administrative_area_level_1') || prev.state,
+          pincode: get('postal_code') || prev.pincode,
+        }))
+      }
+    })
   }, [])
 
-  // Set position from any source
-  const setPosition = useCallback((lat, lng) => {
-    setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))
-    setErrors((prev) => ({ ...prev, location: '' }))
-    reverseGeocode(lat, lng)
-  }, [reverseGeocode])
+  // Move / create marker and pan map to position
+  const handlePositionChange = useCallback(
+    (lat, lng, mapInstance) => {
+      const map = mapInstance || googleMapRef.current
+      if (!map) return
 
-  // Search places using Nominatim
+      setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }))
+      setErrors((prev) => ({ ...prev, location: '' }))
+
+      const pos = { lat, lng }
+      if (markerRef.current) {
+        markerRef.current.setPosition(pos)
+      } else {
+        markerRef.current = new window.google.maps.Marker({
+          position: pos,
+          map,
+          draggable: true,
+        })
+        markerRef.current.addListener('dragend', () => {
+          const p = markerRef.current.getPosition()
+          handlePositionChange(p.lat(), p.lng())
+        })
+      }
+      map.panTo(pos)
+      if (map.getZoom() < 15) map.setZoom(17)
+
+      reverseGeocode(lat, lng)
+    },
+    [reverseGeocode]
+  )
+
+  // Places Autocomplete search
   const handleSearch = useCallback((query) => {
     setSearchQuery(query)
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
@@ -104,43 +200,75 @@ export default function AddressForm({ initialData = null, onSubmit, onCancel, lo
     }
 
     searchTimeoutRef.current = setTimeout(() => {
+      if (!autocompleteServiceRef.current) return
       setSearching(true)
-      fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5&countrycodes=in`,
-        { headers: { 'Accept-Language': 'en' } }
+      autocompleteServiceRef.current.getPlacePredictions(
+        {
+          input: query,
+          componentRestrictions: { country: 'in' },
+          types: ['geocode', 'establishment'],
+        },
+        (predictions, status) => {
+          setSearching(false)
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && predictions) {
+            setSearchResults(predictions)
+            setShowResults(true)
+          } else {
+            setSearchResults([])
+          }
+        }
       )
-        .then((res) => res.json())
-        .then((results) => {
-          setSearchResults(results || [])
-          setShowResults(true)
-          setSearching(false)
-        })
-        .catch(() => {
-          setSearching(false)
-          setSearchResults([])
-        })
-    }, 400) // debounce 400ms
+    }, 400)
   }, [])
 
-  // Select a search result
-  const selectSearchResult = (result) => {
-    const lat = parseFloat(result.lat)
-    const lng = parseFloat(result.lon)
-    const addr = result.address || {}
-
-    setForm((prev) => ({
-      ...prev,
-      latitude: lat,
-      longitude: lng,
-      fullAddress: result.display_name?.split(',').slice(0, 4).join(', ') || prev.fullAddress,
-      city: addr.city || addr.town || addr.village || addr.county || prev.city,
-      state: addr.state || prev.state,
-      pincode: addr.postcode || prev.pincode,
-    }))
-    setErrors((prev) => ({ ...prev, location: '' }))
-    setSearchQuery(result.display_name?.split(',').slice(0, 2).join(', ') || '')
+  // Select a prediction → geocode to get lat/lng
+  const selectSearchResult = (prediction) => {
+    if (!geocoderRef.current) return
+    setSearchQuery(prediction.description.split(',').slice(0, 2).join(', '))
     setShowResults(false)
     setSearchResults([])
+
+    geocoderRef.current.geocode({ placeId: prediction.place_id }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        const loc = results[0].geometry.location
+        const lat = loc.lat()
+        const lng = loc.lng()
+        const components = results[0].address_components
+        const get = (type) => components.find((c) => c.types.includes(type))?.long_name || ''
+
+        setForm((prev) => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+          fullAddress: buildAddress(results[0].formatted_address) || prev.fullAddress,
+          city: extractCity(components) || prev.city,
+          state: get('administrative_area_level_1') || prev.state,
+          pincode: get('postal_code') || prev.pincode,
+        }))
+        setErrors((prev) => ({ ...prev, location: '' }))
+
+        // Update map
+        const map = googleMapRef.current
+        if (map) {
+          const pos = { lat, lng }
+          if (markerRef.current) {
+            markerRef.current.setPosition(pos)
+          } else {
+            markerRef.current = new window.google.maps.Marker({
+              position: pos,
+              map,
+              draggable: true,
+            })
+            markerRef.current.addListener('dragend', () => {
+              const p = markerRef.current.getPosition()
+              handlePositionChange(p.lat(), p.lng())
+            })
+          }
+          map.panTo(pos)
+          map.setZoom(17)
+        }
+      }
+    })
   }
 
   // Use device GPS
@@ -155,7 +283,7 @@ export default function AddressForm({ initialData = null, onSubmit, onCancel, lo
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords
-        setPosition(latitude, longitude)
+        handlePositionChange(latitude, longitude)
         setLocating(false)
       },
       (error) => {
@@ -177,8 +305,6 @@ export default function AddressForm({ initialData = null, onSubmit, onCancel, lo
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     )
   }
-
-  const markerPosition = form.latitude && form.longitude ? [form.latitude, form.longitude] : null
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -232,15 +358,17 @@ export default function AddressForm({ initialData = null, onSubmit, onCancel, lo
         {/* Search results dropdown */}
         {showResults && searchResults.length > 0 && (
           <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-            {searchResults.map((result, idx) => (
+            {searchResults.map((prediction, idx) => (
               <button
-                key={result.place_id || idx}
+                key={prediction.place_id || idx}
                 type="button"
-                onClick={() => selectSearchResult(result)}
+                onClick={() => selectSearchResult(prediction)}
                 className="w-full text-left px-4 py-2.5 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors"
               >
-                <p className="text-sm text-gray-800 line-clamp-1">{result.display_name?.split(',').slice(0, 2).join(', ')}</p>
-                <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{result.display_name}</p>
+                <p className="text-sm text-gray-800 line-clamp-1">
+                  {prediction.structured_formatting?.main_text || prediction.description.split(',')[0]}
+                </p>
+                <p className="text-xs text-gray-400 line-clamp-1 mt-0.5">{prediction.description}</p>
               </button>
             ))}
           </div>
@@ -277,23 +405,16 @@ export default function AddressForm({ initialData = null, onSubmit, onCancel, lo
         <p className="text-xs text-red-500 ml-1">{errors.location}</p>
       )}
 
-      {/* Leaflet Map */}
+      {/* Google Map */}
       <div className="rounded-xl overflow-hidden border border-gray-200">
-        <MapContainer
-          center={markerPosition || DEFAULT_CENTER}
-          zoom={markerPosition ? 17 : DEFAULT_ZOOM}
-          style={{ height: '220px', width: '100%' }}
-          zoomControl={true}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <MapClickHandler onPositionChange={setPosition} />
-          {markerPosition && <DraggableMarker position={markerPosition} onPositionChange={setPosition} />}
-          <MapUpdater position={markerPosition} />
-        </MapContainer>
-        {markerPosition && (
+        {!mapsReady ? (
+          <div className="h-[220px] flex items-center justify-center bg-gray-50">
+            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          </div>
+        ) : (
+          <div ref={mapRef} style={{ height: '220px', width: '100%' }} />
+        )}
+        {form.latitude && form.longitude && (
           <p className="text-xs text-gray-500 px-3 py-1.5 bg-gray-50 border-t border-gray-100">
             📍 {form.latitude.toFixed(6)}, {form.longitude.toFixed(6)} — drag pin or tap map to adjust
           </p>
@@ -396,59 +517,6 @@ export default function AddressForm({ initialData = null, onSubmit, onCancel, lo
       </div>
     </form>
   )
-}
-
-/* ================================
-   Map Click Handler
-================================ */
-function MapClickHandler({ onPositionChange }) {
-  useMapEvents({
-    click(e) {
-      onPositionChange(e.latlng.lat, e.latlng.lng)
-    },
-  })
-  return null
-}
-
-/* ================================
-   Draggable Marker
-================================ */
-function DraggableMarker({ position, onPositionChange }) {
-  const markerRef = useRef(null)
-
-  const eventHandlers = {
-    dragend() {
-      const marker = markerRef.current
-      if (marker) {
-        const { lat, lng } = marker.getLatLng()
-        onPositionChange(lat, lng)
-      }
-    },
-  }
-
-  return (
-    <Marker
-      ref={markerRef}
-      position={position}
-      draggable
-      eventHandlers={eventHandlers}
-    />
-  )
-}
-
-/* ================================
-   Map Updater (pan to new position)
-================================ */
-function MapUpdater({ position }) {
-  const map = useMap()
-
-  useEffect(() => {
-    if (position) {
-      map.flyTo(position, 17, { duration: 0.8 })
-    }
-  }, [position, map])
-
-  return null
 }
 
 /* ================================
