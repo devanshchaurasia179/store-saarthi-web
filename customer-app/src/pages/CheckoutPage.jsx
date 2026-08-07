@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Copy,
   ExternalLink,
+  Phone,
 } from 'lucide-react'
 import { configureMaps, importLibrary } from '../utils/maps'
 import { useCart } from '../contexts/CartContext'
@@ -72,7 +73,6 @@ function InlineAddressForm({ value, onChange }) {
     ]).then(() => setMapsReady(true)).catch(console.error)
   }, [])
 
-  // Helpers
   const extractCity = (components) => {
     const get = (t) => components.find((c) => c.types.includes(t))?.long_name || ''
     return get('locality') || get('administrative_area_level_3') || get('administrative_area_level_2') || get('sublocality_level_1') || ''
@@ -120,7 +120,6 @@ function InlineAddressForm({ value, onChange }) {
     })
   }, [applyGeoResult])
 
-  // Init map
   useEffect(() => {
     if (!mapsReady || !mapRef.current || googleMapRef.current) return
     const center = value.latitude && value.longitude
@@ -149,7 +148,6 @@ function InlineAddressForm({ value, onChange }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapsReady])
 
-  // Search
   const handleSearch = useCallback((query) => {
     setSearchQuery(query)
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current)
@@ -185,7 +183,6 @@ function InlineAddressForm({ value, onChange }) {
     })
   }
 
-  // GPS
   const handleGPS = () => {
     if (!navigator.geolocation) { setLocationError('Geolocation not supported'); return }
     setLocating(true); setLocationError('')
@@ -209,7 +206,6 @@ function InlineAddressForm({ value, onChange }) {
 
   return (
     <div className="space-y-3">
-      {/* Label selector */}
       <div className="flex gap-2">
         {ADDRESS_LABELS.map((lbl) => (
           <button
@@ -225,7 +221,6 @@ function InlineAddressForm({ value, onChange }) {
         ))}
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
         <input
@@ -257,7 +252,6 @@ function InlineAddressForm({ value, onChange }) {
         )}
       </div>
 
-      {/* GPS button */}
       <button
         type="button"
         onClick={handleGPS}
@@ -267,11 +261,10 @@ function InlineAddressForm({ value, onChange }) {
         } disabled:opacity-60`}
       >
         {locating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : hasLocation ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> : <Navigation className="w-3.5 h-3.5" />}
-        {locating ? 'Getting location...' : hasLocation ? 'Location set â€” tap to update' : 'Use current location'}
+        {locating ? 'Getting location...' : hasLocation ? 'Location set — tap to update' : 'Use current location'}
       </button>
       {locationError && <p className="text-xs text-red-500">{locationError}</p>}
 
-      {/* Compact map */}
       <div className="rounded-xl overflow-hidden border border-gray-200">
         {!mapsReady
           ? <div className="h-[160px] flex items-center justify-center bg-gray-50"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
@@ -279,12 +272,11 @@ function InlineAddressForm({ value, onChange }) {
         }
         {hasLocation && (
           <p className="text-xs text-gray-400 px-3 py-1 bg-gray-50 border-t border-gray-100">
-            ðŸ“ {value.latitude.toFixed(5)}, {value.longitude.toFixed(5)} â€” drag pin or tap to adjust
+            📍 {value.latitude.toFixed(5)}, {value.longitude.toFixed(5)} — drag pin or tap to adjust
           </p>
         )}
       </div>
 
-      {/* Address fields */}
       <input
         type="text"
         value={value.fullAddress}
@@ -327,12 +319,10 @@ export default function CheckoutPage() {
   const { items, shopId, shopName, subtotal, totalItems, clearCart } = useCart()
   const { user, isAuthenticated, updateUser } = useAuth()
 
-  // Order type from OrderTypePage
   const orderType = location.state?.orderType || 'delivery'
   const tableNumber = location.state?.tableNumber || ''
   const isDineIn = orderType === 'dineIn'
 
-  // Delivery orders require login â€” redirect inside useEffect
   const needsLogin = !isDineIn && !isAuthenticated
   useEffect(() => {
     if (needsLogin) {
@@ -340,7 +330,6 @@ export default function CheckoutPage() {
     }
   }, [needsLogin, navigate])
 
-  // Fetch shop details to get UPI ID
   const { data: shopDetails } = useShopDetails(shopId)
 
   const [selectedAddress, setSelectedAddress] = useState(null)
@@ -348,52 +337,38 @@ export default function CheckoutPage() {
   const [orderNotes, setOrderNotes] = useState('')
   const [showAddressPicker, setShowAddressPicker] = useState(false)
   const [error, setError] = useState('')
+  const [upiPayment, setUpiPayment] = useState(null)
 
-  // New user profile completion state
   const [profileName, setProfileName] = useState(user?.name || '')
   const [newAddress, setNewAddress] = useState({
-    label: 'Home',
-    fullAddress: '',
-    houseNumber: '',
-    landmark: '',
-    city: '',
-    state: '',
-    pincode: '',
-    latitude: null,
-    longitude: null,
+    label: 'Home', fullAddress: '', houseNumber: '', landmark: '',
+    city: '', state: '', pincode: '', latitude: null, longitude: null,
   })
   const [profileSaving, setProfileSaving] = useState(false)
   const [profileError, setProfileError] = useState('')
 
-  // Fetch addresses (only for delivery orders)
   const { data: addresses = [], isLoading: addressesLoading } = useQuery({
     queryKey: ['addresses'],
     queryFn: () => addressService.getAddresses(),
     enabled: !isDineIn,
     onSuccess: (data) => {
-      // Auto-select default address
       if (!selectedAddress && data.length > 0) {
-        const defaultAddr = data.find((a) => a.isDefault) || data[0]
-        setSelectedAddress(defaultAddr)
+        setSelectedAddress(data.find((a) => a.isDefault) || data[0])
       }
     },
   })
 
-  // Auto-select default address when data loads
   useMemo(() => {
     if (!selectedAddress && addresses.length > 0) {
-      const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0]
-      setSelectedAddress(defaultAddr)
+      setSelectedAddress(addresses.find((a) => a.isDefault) || addresses[0])
     }
   }, [addresses, selectedAddress])
 
-  // Filter payment methods based on what the shop accepts
   const acceptedMethods = shopDetails?.acceptedPaymentMethods || ['COD']
   const availablePaymentMethods = ALL_PAYMENT_METHODS.filter((m) =>
     acceptedMethods.includes(m.backendKey)
   )
 
-  // Auto-select first available payment method if current selection is no longer valid
   useMemo(() => {
     const isCurrentMethodAvailable = availablePaymentMethods.some((m) => m.id === paymentMethod)
     if (!isCurrentMethodAvailable && availablePaymentMethods.length > 0) {
@@ -401,64 +376,32 @@ export default function CheckoutPage() {
     }
   }, [availablePaymentMethods, paymentMethod])
 
-  // Delivery calculation from backend shop settings
   const shopDeliveryCharge = shopDetails?.deliveryCharges ?? 30
 
-  // If user needs login, show nothing while redirect happens
-  if (needsLogin) {
-    return null
-  }
+  if (needsLogin) return null
 
-  // Check if new user needs to complete profile (name + address) for delivery
   const needsProfileCompletion = !isDineIn && isAuthenticated && (!user?.name || addresses.length === 0)
 
   const handleSaveProfile = async () => {
     setProfileError('')
-
-    if (!profileName.trim()) {
-      setProfileError('Please enter your name')
-      return
-    }
-
+    if (!profileName.trim()) { setProfileError('Please enter your name'); return }
     if (addresses.length === 0) {
-      if (!newAddress.fullAddress.trim()) {
-        setProfileError('Please enter your full address')
-        return
-      }
-      if (!newAddress.city.trim()) {
-        setProfileError('Please enter your city')
-        return
-      }
-      if (!newAddress.pincode.trim() || !/^\d{6}$/.test(newAddress.pincode)) {
-        setProfileError('Please enter a valid 6-digit pincode')
-        return
-      }
-      if (!newAddress.latitude || !newAddress.longitude) {
-        setProfileError('Please pin your location on the map or use GPS')
-        return
-      }
+      if (!newAddress.fullAddress.trim()) { setProfileError('Please enter your full address'); return }
+      if (!newAddress.city.trim()) { setProfileError('Please enter your city'); return }
+      if (!newAddress.pincode.trim() || !/^\d{6}$/.test(newAddress.pincode)) { setProfileError('Please enter a valid 6-digit pincode'); return }
+      if (!newAddress.latitude || !newAddress.longitude) { setProfileError('Please pin your location on the map or use GPS'); return }
     }
-
     setProfileSaving(true)
     try {
-      // Save name if missing
       if (!user?.name) {
         const profileRes = await authService.updateProfile({ name: profileName.trim() })
         updateUser(profileRes.data.customer)
       }
-
-      // Save address if none exist
       if (addresses.length === 0) {
-        const addressRes = await addressService.addAddress({
-          ...newAddress,
-          fullAddress: newAddress.fullAddress.trim(),
-          isDefault: true,
-        })
+        const addressRes = await addressService.addAddress({ ...newAddress, fullAddress: newAddress.fullAddress.trim(), isDefault: true })
         queryClient.setQueryData(['addresses'], addressRes.data.addresses)
         updateUser((prev) => ({ ...prev, addresses: addressRes.data.addresses }))
-        if (addressRes.data.addresses.length > 0) {
-          setSelectedAddress(addressRes.data.addresses[0])
-        }
+        if (addressRes.data.addresses.length > 0) setSelectedAddress(addressRes.data.addresses[0])
       }
     } catch (err) {
       setProfileError(err.response?.data?.message || 'Failed to save. Please try again.')
@@ -471,9 +414,6 @@ export default function CheckoutPage() {
   const deliveryCharge = isDineIn ? 0 : ((shopFreeDeliveryAbove > 0 && subtotal >= shopFreeDeliveryAbove) ? 0 : shopDeliveryCharge)
   const grandTotal = subtotal + deliveryCharge
 
-  const [upiPayment, setUpiPayment] = useState(null) // { orderId, orderNumber, upiId, payeeName, amount }
-
-  // Place order mutation
   const orderMutation = useMutation({
     mutationFn: (orderData) => isDineIn
       ? orderService.createDineInOrder(orderData)
@@ -481,24 +421,26 @@ export default function CheckoutPage() {
     onSuccess: async (res) => {
       const orderId = res.data.order?._id || res.data.orderId
       const orderNumber = res.data.order?.orderNumber || res.data.orderNumber
-
-      // If UPI payment selected, show payment screen using already-loaded shop details
-      // (no extra backend call needed â€” upiId and grandTotal are already on the client)
       if (paymentMethod === 'upi') {
         setUpiPayment({
-          orderId,
-          orderNumber,
+          orderId, orderNumber,
           upiId: shopDetails?.upiId || '',
           payeeName: shopDetails?.shopName || shopName || '',
           amount: grandTotal,
+          customerName: user?.name || '',
+          customerPhone: user?.phone || '',
         })
         return
       }
-
-      // COD â€” go directly to success
       clearCart()
       navigate('/order-success', {
-        state: { orderId, orderNumber, estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '', orderType, orderStatus: res.data.order?.status || 'pending' },
+        state: {
+          orderId, orderNumber,
+          estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '',
+          orderType,
+          orderStatus: res.data.order?.status || 'pending',
+          shopPhone: shopDetails?.mobileNumber || shopDetails?.whatsappNumber || '',
+        },
         replace: true,
       })
     },
@@ -507,7 +449,6 @@ export default function CheckoutPage() {
     },
   })
 
-  // Called after customer taps "Open UPI App" â€” go straight to order success
   const handleUpiOpen = () => {
     if (!upiPayment) return
     clearCart()
@@ -517,6 +458,7 @@ export default function CheckoutPage() {
         orderNumber: upiPayment.orderNumber,
         estimatedDeliveryTime: shopDetails?.estimatedDeliveryTime || '',
         orderType,
+        shopPhone: shopDetails?.mobileNumber || shopDetails?.whatsappNumber || '',
       },
       replace: true,
     })
@@ -524,52 +466,21 @@ export default function CheckoutPage() {
 
   const handlePlaceOrder = () => {
     setError('')
-
-    if (shopDetails?.isStoreOnline === false) {
-      setError('This store is currently offline. Please try again later.')
-      return
-    }
-
-    if (shopDetails?.isOnlineOrderingEnabled === false) {
-      setError('Online ordering is currently disabled for this store.')
-      return
-    }
-
-    if (!isDineIn && !selectedAddress) {
-      setError('Please select a delivery address')
-      return
-    }
-
-    if (items.length === 0) {
-      setError('Your cart is empty')
-      return
-    }
-
+    if (shopDetails?.isStoreOnline === false) { setError('This store is currently offline. Please try again later.'); return }
+    if (shopDetails?.isOnlineOrderingEnabled === false) { setError('Online ordering is currently disabled for this store.'); return }
+    if (!isDineIn && !selectedAddress) { setError('Please select a delivery address'); return }
+    if (items.length === 0) { setError('Your cart is empty'); return }
     const minOrder = shopDetails?.minimumOrderAmount ?? 0
-    if (minOrder > 0 && subtotal < minOrder) {
-      setError(`Minimum order amount is ${formatPrice(minOrder)}`)
-      return
-    }
-
-    if (paymentMethod === 'upi' && !shopDetails?.upiId) {
-      setError('This shop has not configured a UPI ID. Please choose Cash on Delivery.')
-      return
-    }
+    if (minOrder > 0 && subtotal < minOrder) { setError(`Minimum order amount is ${formatPrice(minOrder)}`); return }
+    if (paymentMethod === 'upi' && !shopDetails?.upiId) { setError('This shop has not configured a UPI ID. Please choose Cash on Delivery.'); return }
 
     const orderData = {
       shop: shopId,
       orderType: isDineIn ? 'dineIn' : 'delivery',
       ...(isDineIn && { tableNumber }),
       items: items.map((item) => {
-        // Variant items have id format: "productId_variantId"
         const parts = item.id.split('_')
-        const productId = parts[0]
-        const variantId = parts.length > 1 ? parts[1] : undefined
-        return {
-          product: productId,
-          variant: variantId,
-          quantity: item.quantity,
-        }
+        return { product: parts[0], variant: parts.length > 1 ? parts[1] : undefined, quantity: item.quantity }
       }),
       ...(!isDineIn && {
         address: {
@@ -585,32 +496,19 @@ export default function CheckoutPage() {
       paymentMethod: paymentMethod === 'cod' ? 'COD' : 'UPI',
       notes: orderNotes.trim(),
     }
-
     orderMutation.mutate(orderData)
   }
 
-  // Empty cart guard
   if (items.length === 0) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-lg mx-auto px-4 py-8"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-lg mx-auto px-4 py-8">
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
           <div className="w-20 h-20 bg-gray-100 rounded-3xl flex items-center justify-center mb-5">
             <ShoppingCart className="w-10 h-10 text-gray-300" />
           </div>
-          <h2 className="font-subheading text-lg font-semibold text-gray-700 mb-2">
-            Nothing to checkout
-          </h2>
-          <p className="text-sm text-gray-400 mb-6">
-            Add items to your cart before checking out
-          </p>
-          <Link
-            to={shopId ? `/shop/${shopId}` : '/'}
-            className="px-6 py-3 bg-primary text-white rounded-xl font-medium text-sm"
-          >
+          <h2 className="font-subheading text-lg font-semibold text-gray-700 mb-2">Nothing to checkout</h2>
+          <p className="text-sm text-gray-400 mb-6">Add items to your cart before checking out</p>
+          <Link to={shopId ? `/shop/${shopId}` : '/'} className="px-6 py-3 bg-primary text-white rounded-xl font-medium text-sm">
             Browse Products
           </Link>
         </div>
@@ -618,13 +516,17 @@ export default function CheckoutPage() {
     )
   }
 
-  // UPI payment screen â€” shown after order is created
   if (upiPayment) {
     return (
       <UpiPaymentScreen
         upiId={upiPayment.upiId}
         payeeName={upiPayment.payeeName}
         amount={upiPayment.amount}
+        customerName={upiPayment.customerName}
+        customerPhone={upiPayment.customerPhone}
+        orderId={upiPayment.orderId}
+        orderNumber={upiPayment.orderNumber}
+        shopPhone={shopDetails?.mobileNumber || shopDetails?.whatsappNumber || ''}
         onOpen={handleUpiOpen}
       />
     )
@@ -659,11 +561,9 @@ export default function CheckoutPage() {
           {items.map((item) => (
             <div key={item.id} className="flex items-center justify-between">
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-800 font-medium truncate">
-                  {item.name}
-                </p>
+                <p className="text-sm text-gray-800 font-medium truncate">{item.name}</p>
                 <p className="text-xs text-gray-400">
-                  {formatPrice(item.price)} Ã— {item.quantity}
+                  {formatPrice(item.price)} &times; {item.quantity}
                 </p>
               </div>
               <span className="text-sm font-semibold text-gray-900 shrink-0 ml-3">
@@ -705,15 +605,12 @@ export default function CheckoutPage() {
                 />
               </div>
             )}
-
             {addresses.length === 0 && (
               <InlineAddressForm value={newAddress} onChange={setNewAddress} />
             )}
-
             {profileError && (
               <p className="text-sm text-red-500 bg-red-50 px-3 py-2 rounded-lg">{profileError}</p>
             )}
-
             <motion.button
               whileTap={{ scale: 0.97 }}
               onClick={handleSaveProfile}
@@ -726,90 +623,73 @@ export default function CheckoutPage() {
         </Section>
       )}
 
-      {/* Delivery Address (only for delivery orders) */}
+      {/* Delivery Address */}
       {!isDineIn && !needsProfileCompletion && (
-      <Section title="Delivery Address" icon={MapPin}>
-        {addressesLoading ? (
-          <Skeleton className="w-full h-20 rounded-xl" />
-        ) : selectedAddress ? (
-          <div
-            onClick={() => setShowAddressPicker(true)}
-            className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
-          >
-            <div className="w-9 h-9 bg-primary-50 rounded-lg flex items-center justify-center shrink-0">
-              <MapPin className="w-4.5 h-4.5 text-primary" />
+        <Section title="Delivery Address" icon={MapPin}>
+          {addressesLoading ? (
+            <Skeleton className="w-full h-20 rounded-xl" />
+          ) : selectedAddress ? (
+            <div
+              onClick={() => setShowAddressPicker(true)}
+              className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
+            >
+              <div className="w-9 h-9 bg-primary-50 rounded-lg flex items-center justify-center shrink-0">
+                <MapPin className="w-4.5 h-4.5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800">{selectedAddress.label}</p>
+                <p className="text-xs text-gray-500 truncate">
+                  {[selectedAddress.houseNumber, selectedAddress.fullAddress, selectedAddress.city].filter(Boolean).join(', ')}
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-800">
-                {selectedAddress.label}
-              </p>
-              <p className="text-xs text-gray-500 truncate">
-                {[selectedAddress.houseNumber, selectedAddress.fullAddress, selectedAddress.city]
-                  .filter(Boolean)
-                  .join(', ')}
-              </p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-          </div>
-        ) : (
-          <button
-            onClick={() => addresses.length > 0 ? setShowAddressPicker(true) : navigate('/address')}
-            className="w-full flex items-center gap-3 p-3 border border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-primary hover:text-primary transition-colors"
-          >
-            <MapPin className="w-4 h-4" />
-            {addresses.length > 0 ? 'Select an address' : 'Add delivery address'}
-            <ChevronRight className="w-4 h-4 ml-auto" />
-          </button>
-        )}
-      </Section>
+          ) : (
+            <button
+              onClick={() => addresses.length > 0 ? setShowAddressPicker(true) : navigate('/address')}
+              className="w-full flex items-center gap-3 p-3 border border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-primary hover:text-primary transition-colors"
+            >
+              <MapPin className="w-4 h-4" />
+              {addresses.length > 0 ? 'Select an address' : 'Add delivery address'}
+              <ChevronRight className="w-4 h-4 ml-auto" />
+            </button>
+          )}
+        </Section>
       )}
 
       {/* Payment Method */}
       <Section title="Payment Method" icon={CreditCard}>
         <div className="space-y-2.5">
           {availablePaymentMethods.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-2">
-              No payment methods available for this shop
-            </p>
+            <p className="text-sm text-gray-400 text-center py-2">No payment methods available for this shop</p>
           ) : (
             availablePaymentMethods.map((method) => {
               const Icon = method.icon
               const isSelected = paymentMethod === method.id
               const isUpiUnavailable = method.id === 'upi' && !shopDetails?.upiId
-              const disabled = isUpiUnavailable
               return (
                 <button
                   key={method.id}
-                  disabled={disabled}
-                  onClick={() => !disabled && setPaymentMethod(method.id)}
+                  disabled={isUpiUnavailable}
+                  onClick={() => !isUpiUnavailable && setPaymentMethod(method.id)}
                   className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left ${
                     isSelected
                       ? 'border-primary bg-primary-50/40'
-                      : !disabled
+                      : !isUpiUnavailable
                       ? 'border-gray-100 hover:border-gray-200 bg-white'
                       : 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
                   }`}
                 >
-                  <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                      isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'
-                    }`}
-                  >
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${isSelected ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'}`}>
                     <Icon className="w-4.5 h-4.5" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-gray-800">
-                      {method.label}
-                    </span>
+                    <span className="text-sm font-medium text-gray-800">{method.label}</span>
                     {method.id === 'upi' && shopDetails?.upiId && (
-                      <p className="text-xs text-gray-400 truncate mt-0.5">
-                        Pay directly via any UPI app
-                      </p>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">Pay directly via any UPI app</p>
                     )}
                     {isUpiUnavailable && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        UPI not configured by this shop
-                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">UPI not configured by this shop</p>
                     )}
                   </div>
                   {isSelected && (
@@ -855,9 +735,7 @@ export default function CheckoutPage() {
               )}
             </>
           )}
-          {isDineIn && (
-            <BillRow label="Delivery" value="N/A (Dine In)" valueClass="text-gray-400" />
-          )}
+          {isDineIn && <BillRow label="Delivery" value="N/A (Dine In)" valueClass="text-gray-400" />}
           <div className="pt-2.5 mt-2.5 border-t border-gray-100 flex justify-between">
             <span className="text-base font-bold text-gray-900">Total</span>
             <span className="text-base font-bold text-gray-900">{formatPrice(grandTotal)}</span>
@@ -891,22 +769,14 @@ export default function CheckoutPage() {
               disabled={orderMutation.isPending || (!isDineIn && !selectedAddress) || needsProfileCompletion}
               className="flex items-center gap-2 px-8 py-3.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
             >
-              {orderMutation.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <>Place Order</>
-              )}
+              {orderMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Place Order'}
             </motion.button>
           </div>
         </div>
       </div>
 
       {/* Address Picker Bottom Sheet */}
-      <BottomSheet
-        isOpen={showAddressPicker}
-        onClose={() => setShowAddressPicker(false)}
-        title="Select Address"
-      >
+      <BottomSheet isOpen={showAddressPicker} onClose={() => setShowAddressPicker(false)} title="Select Address">
         <div className="px-5 py-4 space-y-3">
           {addresses.map((addr) => (
             <AddressCard
@@ -914,10 +784,7 @@ export default function CheckoutPage() {
               address={addr}
               selectable
               selected={selectedAddress?._id === addr._id}
-              onSelect={(a) => {
-                setSelectedAddress(a)
-                setShowAddressPicker(false)
-              }}
+              onSelect={(a) => { setSelectedAddress(a); setShowAddressPicker(false) }}
             />
           ))}
           <button
@@ -935,11 +802,27 @@ export default function CheckoutPage() {
 /* ================================
    UPI Payment Screen
 ================================ */
-function UpiPaymentScreen({ upiId, payeeName, amount, onOpen }) {
+function UpiPaymentScreen({ upiId, payeeName, amount, customerName, customerPhone, orderId, orderNumber, shopPhone, onOpen }) {
   const [copied, setCopied] = useState(false)
+  const [qrDataUrl, setQrDataUrl] = useState('')
+  const [paid, setPaid] = useState(false)
 
-  // Build UPI deep-link â€” no `tn` (transaction note) to avoid bank blocks
-  const upiUrl = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR`
+  const txNote = [customerName, customerPhone].filter(Boolean).join(' ') || ('Order ' + (orderNumber || orderId))
+  const upiUrl = 'upi://pay?pa=' + encodeURIComponent(upiId)
+    + '&pn=' + encodeURIComponent(payeeName)
+    + '&am=' + amount
+    + '&cu=INR'
+    + '&tn=' + encodeURIComponent(txNote)
+
+  useEffect(() => {
+    import('qrcode').then((QRCode) => {
+      QRCode.default.toDataURL(upiUrl, {
+        width: 280,
+        margin: 2,
+        color: { dark: '#1e1b4b', light: '#ffffff' },
+      }).then(setQrDataUrl).catch(console.error)
+    })
+  }, [upiUrl])
 
   const handleCopy = () => {
     navigator.clipboard.writeText(upiId).then(() => {
@@ -948,35 +831,65 @@ function UpiPaymentScreen({ upiId, payeeName, amount, onOpen }) {
     })
   }
 
+  const handleDownload = () => {
+    if (!qrDataUrl) return
+    const a = document.createElement('a')
+    a.href = qrDataUrl
+    a.download = 'pay-' + payeeName.replace(/\s+/g, '-') + '.png'
+    a.click()
+  }
+
+  const handleCallShop = () => {
+    if (shopPhone) window.location.href = 'tel:' + shopPhone
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="max-w-lg mx-auto px-4 py-8"
+      className="max-w-lg mx-auto px-4 py-8 pb-16"
     >
-      {/* Icon */}
-      <div className="flex flex-col items-center mb-8">
+      <div className="flex flex-col items-center mb-6">
         <div className="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center mb-4">
           <Smartphone className="w-10 h-10 text-indigo-500" />
         </div>
         <h1 className="font-heading text-2xl font-bold text-gray-900 text-center">Pay via UPI</h1>
-        <p className="text-sm text-gray-400 mt-1 text-center">
-          Open any UPI app and pay to complete your order
-        </p>
+        <p className="text-sm text-gray-400 mt-1 text-center">Scan the QR with any UPI app to pay</p>
       </div>
 
       {/* Amount */}
-      <div className="bg-indigo-50 rounded-2xl p-5 mb-5 text-center">
+      <div className="bg-indigo-50 rounded-2xl p-4 mb-5 text-center">
         <p className="text-xs text-indigo-400 font-medium uppercase tracking-wide mb-1">Amount to Pay</p>
-        <p className="text-4xl font-bold text-indigo-700">â‚¹{Number(amount).toLocaleString('en-IN')}</p>
+        <p className="text-4xl font-bold text-indigo-700">&#8377;{Number(amount).toLocaleString('en-IN')}</p>
         <p className="text-sm text-indigo-400 mt-1">to {payeeName}</p>
+      </div>
+
+      {/* QR Code */}
+      <div className="bg-white rounded-2xl border border-gray-100 p-5 mb-5 shadow-sm flex flex-col items-center">
+        {qrDataUrl ? (
+          <img src={qrDataUrl} alt="UPI QR Code" className="w-52 h-52 rounded-xl" />
+        ) : (
+          <div className="w-52 h-52 bg-gray-50 rounded-xl flex items-center justify-center">
+            <Loader2 className="w-8 h-8 text-gray-300 animate-spin" />
+          </div>
+        )}
+        <p className="text-xs text-gray-400 mt-3 text-center">Scan with GPay, PhonePe, Paytm or any UPI app</p>
+        {qrDataUrl && (
+          <button
+            onClick={handleDownload}
+            className="mt-3 flex items-center gap-1.5 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium text-gray-600 transition-colors"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Download QR
+          </button>
+        )}
       </div>
 
       {/* UPI ID */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-5 shadow-sm">
         <p className="text-xs font-medium text-gray-400 mb-2">UPI ID</p>
         <div className="flex items-center gap-3">
-          <p className="flex-1 text-base font-semibold text-gray-800 break-all">{upiId}</p>
+          <p className="flex-1 text-sm font-semibold text-gray-800 break-all">{upiId}</p>
           <button
             onClick={handleCopy}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium text-gray-600 transition-colors shrink-0"
@@ -987,19 +900,33 @@ function UpiPaymentScreen({ upiId, payeeName, amount, onOpen }) {
         </div>
       </div>
 
-      {/* Open UPI App â€” tapping this also navigates to order success */}
-      <a
-        href={upiUrl}
-        onClick={onOpen}
-        className="w-full flex items-center justify-center gap-2 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-semibold text-base transition-colors shadow-lg shadow-indigo-200"
-      >
-        <ExternalLink className="w-5 h-5" />
-        Open UPI App to Pay
-      </a>
+      {/* I've Paid */}
+      {!paid ? (
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => { setPaid(true); onOpen() }}
+          className="w-full flex items-center justify-center gap-2 py-4 bg-green-600 hover:bg-green-700 text-white rounded-2xl font-semibold text-base transition-colors shadow-lg shadow-green-200 mb-3"
+        >
+          <CheckCircle2 className="w-5 h-5" />
+          I&apos;ve Paid &mdash; Place Order
+        </motion.button>
+      ) : (
+        <div className="w-full flex items-center justify-center gap-2 py-4 bg-green-100 text-green-700 rounded-2xl font-semibold text-base mb-3">
+          <CheckCircle2 className="w-5 h-5" />
+          Order Confirmed!
+        </div>
+      )}
 
-      <p className="text-xs text-gray-400 text-center mt-3">
-        Opens GPay, PhonePe, Paytm or your default UPI app
-      </p>
+      {/* Call shop */}
+      {shopPhone && (
+        <button
+          onClick={handleCallShop}
+          className="w-full flex items-center justify-center gap-2 py-3 border border-gray-200 text-gray-600 hover:bg-gray-50 rounded-2xl text-sm font-medium transition-colors"
+        >
+          <Phone className="w-4 h-4" />
+          Call Shop to Confirm
+        </button>
+      )}
     </motion.div>
   )
 }

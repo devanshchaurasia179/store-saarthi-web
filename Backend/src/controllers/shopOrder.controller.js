@@ -333,7 +333,7 @@ export async function createBillFromOrderEndpoint(req, res) {
     const shopId = req.user._id;
     const { id } = req.params;
     const {
-      paymentMode = "NONE",
+      paymentMode,
       paidAmount,
       discount = 0,
       taxPercentage = 0,
@@ -381,19 +381,33 @@ export async function createBillFromOrderEndpoint(req, res) {
     }
 
     /* ---------- CREATE BILL (reuses existing billing logic) ---------- */
-    // For dine-in orders, default paidAmount to totalAmount (customer pays at table)
+    // COD and dine-in orders: cash is collected at the point of handoff,
+    // so default paidAmount to totalAmount (not 0) to avoid false debt in analytics.
+    // UPI/ONLINE orders that haven't been paid yet should explicitly pass paidAmount=0.
+    const isCashOrder =
+      order.orderType === "dineIn" || order.paymentMethod === "COD";
     const effectivePaidAmount =
       paidAmount !== undefined
         ? Number(paidAmount)
-        : order.orderType === "dineIn"
+        : isCashOrder
           ? order.totalAmount
           : 0;
+
+    // Default paymentMode based on order's paymentMethod when not explicitly provided
+    const effectivePaymentMode =
+      paymentMode !== undefined
+        ? paymentMode
+        : order.paymentMethod === "COD"
+          ? "CASH"
+          : order.paymentMethod === "UPI" || order.paymentMethod === "ONLINE"
+            ? "UPI"
+            : "NONE";
 
     const bill = await createBillFromOrder({
       shopId,
       orderItems: order.items,
       totalAmount: order.totalAmount,
-      paymentMode,
+      paymentMode: effectivePaymentMode,
       paidAmount: effectivePaidAmount,
       discount: Number(discount),
       taxPercentage: Number(taxPercentage),

@@ -8,8 +8,8 @@ import {
   cancelOrder,
 } from "../controllers/order.controller.js";
 import {
-  createPaymentOrder,
-  verifyPayment,
+  getUpiDetails,
+  confirmUpiPayment,
 } from "../controllers/payment.controller.js";
 
 const router = express.Router();
@@ -25,8 +25,8 @@ router.get("/", protectCustomerRoute, getCustomerOrders);
 router.get("/:id", protectCustomerRoute, getOrderById);
 router.patch("/:id/cancel", protectCustomerRoute, cancelOrder);
 
-// Payment routes (Razorpay)
-router.post("/:id/pay", protectCustomerRoute, createPaymentOrder);
-router.post("/:id/verify-payment", protectCustomerRoute, verifyPayment);
+// UPI payment routes (no payment gateway — direct bank transfer)
+router.get("/:id/upi-details", protectCustomerRoute, getUpiDetails);
+router.post("/:id/confirm-upi", protectCustomerRoute, confirmUpiPayment);
 
 export default router;

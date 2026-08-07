@@ -1,6 +1,14 @@
 import { useLocation, Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { CheckCircle, Package, ArrowRight, ShoppingBag, UtensilsCrossed, Clock } from 'lucide-react'
+import {
+  CheckCircle,
+  Package,
+  ArrowRight,
+  ShoppingBag,
+  UtensilsCrossed,
+  Clock,
+  Phone,
+} from 'lucide-react'
 import { useCart } from '../contexts/CartContext'
 
 const STATUS_LABELS = {
@@ -16,12 +24,16 @@ const STATUS_LABELS = {
 
 export default function OrderSuccessPage() {
   const location = useLocation()
-  const { orderId, estimatedDeliveryTime, orderType, orderStatus } = location.state || {}
+  const { orderId, estimatedDeliveryTime, orderType, orderStatus, shopPhone } = location.state || {}
   const { shopId, shopName } = useCart()
 
   const isDineIn = orderType === 'dineIn'
   const statusKey = orderStatus || 'pending'
   const statusDisplay = STATUS_LABELS[statusKey] || { label: statusKey, color: 'text-amber-600 bg-amber-50' }
+
+  const handleCallOwner = () => {
+    if (shopPhone) window.location.href = `tel:${shopPhone}`
+  }
 
   return (
     <motion.div
@@ -110,9 +122,7 @@ export default function OrderSuccessPage() {
           <div className="flex justify-between">
             <span className="text-gray-500">Status</span>
             <span className={`font-medium px-2 py-0.5 rounded-md text-xs ${
-              isDineIn
-                ? 'text-amber-600 bg-amber-50'
-                : statusDisplay.color
+              isDineIn ? 'text-amber-600 bg-amber-50' : statusDisplay.color
             }`}>
               {isDineIn ? 'Preparing' : statusDisplay.label}
             </span>
@@ -136,7 +146,7 @@ export default function OrderSuccessPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.8 }}
-        className="w-full mt-8 space-y-3"
+        className="w-full mt-6 space-y-3"
       >
         {/* Track Order - only for delivery */}
         {!isDineIn && orderId && (
@@ -148,6 +158,7 @@ export default function OrderSuccessPage() {
             <ArrowRight className="w-4 h-4" />
           </Link>
         )}
+
         <Link
           to={shopId ? `/shop/${shopId}` : '/'}
           className={`w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-medium text-sm transition-colors ${
@@ -159,6 +170,17 @@ export default function OrderSuccessPage() {
           <ShoppingBag className="w-4 h-4" />
           Continue Ordering{shopName ? ` with ${shopName}` : ''}
         </Link>
+
+        {/* Call shop owner */}
+        {shopPhone && (
+          <button
+            onClick={handleCallOwner}
+            className="w-full flex items-center justify-center gap-2 py-3.5 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl font-medium text-sm transition-colors"
+          >
+            <Phone className="w-4 h-4 text-green-600" />
+            Call Shop Owner
+          </button>
+        )}
       </motion.div>
     </motion.div>
   )

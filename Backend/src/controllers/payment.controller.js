@@ -1,24 +1,26 @@
 import Order from "../models/Order.js";
-import { createRazorpayOrder, verifyPaymentSignature } from "../config/razorpay.js";
+import Shop from "../models/Shop.js";
 
 /* =========================================================
    PAYMENT CONTROLLER
-   - Create Razorpay order for an existing order
-   - Verify payment after Razorpay Checkout completes
+   - Returns UPI details so the customer app can open a
+     native UPI deep-link (upi://pay) without a payment
+     gateway in between.
 ========================================================= */
 
 /* --------------------------------------------------
-   CREATE RAZORPAY ORDER
-   POST /api/orders/:id/pay
+   GET UPI PAYMENT DETAILS
+   GET /api/orders/:id/upi-details
    Auth: Customer JWT
-   Creates a Razorpay order and links it to the app order
+   Returns the shop UPI ID and order amount so the
+   customer app can open the native UPI intent.
 -------------------------------------------------- */
-export async function createPaymentOrder(req, res) {
+export async function getUpiDetails(req, res) {
   try {
     const { id } = req.params;
     const customerId = req.customer._id;
 
-    const order = await Order.findOne({ _id: id, customer: customerId });
+    const order = await Order.findOne({ _id: id, customer: customerId }).lean();
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -28,45 +30,38 @@ export async function createPaymentOrder(req, res) {
       return res.status(400).json({ message: "Order is already paid" });
     }
 
-    // Create Razorpay order
-    const razorpayOrder = await createRazorpayOrder(
-      order.totalAmount,
-      `order_${order._id}`,
-      { orderId: String(order._id), shop: String(order.shop) }
-    );
+    const shop = await Shop.findById(order.shop).select("shopName upiId").lean();
 
-    // Save Razorpay order ID to our order
-    order.razorpayOrderId = razorpayOrder.id;
-    await order.save();
+    if (!shop?.upiId) {
+      return res.status(400).json({ message: "This shop has not configured a UPI ID" });
+    }
 
     res.status(200).json({
       success: true,
-      razorpayOrderId: razorpayOrder.id,
-      amount: razorpayOrder.amount,
-      currency: razorpayOrder.currency,
-      keyId: process.env.RAZORPAY_KEY_ID,
+      upiId: shop.upiId,
+      payeeName: shop.shopName,
+      amount: order.totalAmount,
+      orderId: order._id,
     });
   } catch (error) {
-    console.error("Create Payment Order Error:", error.message);
-    return res.status(500).json({ message: "Failed to create payment order" });
+    console.error("Get UPI Details Error:", error.message);
+    return res.status(500).json({ message: "Failed to fetch UPI details" });
   }
 }
 
 /* --------------------------------------------------
-   VERIFY PAYMENT
-   POST /api/orders/:id/verify-payment
+   CONFIRM UPI PAYMENT
+   POST /api/orders/:id/confirm-upi
    Auth: Customer JWT
-   Body: { razorpay_payment_id, razorpay_order_id, razorpay_signature }
+   Body: { upiRef } (optional — customer-provided ref)
+   Marks the order payment status as "paid".
+   The shop owner can manually verify on their end.
 -------------------------------------------------- */
-export async function verifyPayment(req, res) {
+export async function confirmUpiPayment(req, res) {
   try {
     const { id } = req.params;
     const customerId = req.customer._id;
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
-
-    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature) {
-      return res.status(400).json({ message: "Missing payment verification fields" });
-    }
+    const { upiRef = "" } = req.body;
 
     const order = await Order.findOne({ _id: id, customer: customerId });
 
@@ -74,37 +69,21 @@ export async function verifyPayment(req, res) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    // Verify that the razorpay_order_id matches what we stored
-    if (order.razorpayOrderId !== razorpay_order_id) {
-      return res.status(400).json({ message: "Order ID mismatch" });
+    if (order.paymentStatus === "paid") {
+      return res.status(400).json({ message: "Order is already marked as paid" });
     }
 
-    // Verify signature
-    const isValid = verifyPaymentSignature(
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature
-    );
-
-    if (!isValid) {
-      order.paymentStatus = "failed";
-      await order.save();
-      return res.status(400).json({ message: "Payment verification failed" });
-    }
-
-    // Mark payment as successful
-    order.razorpayPaymentId = razorpay_payment_id;
-    order.razorpaySignature = razorpay_signature;
     order.paymentStatus = "paid";
+    if (upiRef) order.upiRef = upiRef;
     await order.save();
 
     res.status(200).json({
       success: true,
-      message: "Payment verified successfully",
+      message: "Payment confirmed. The shop will verify and process your order.",
       order,
     });
   } catch (error) {
-    console.error("Verify Payment Error:", error.message);
-    return res.status(500).json({ message: "Failed to verify payment" });
+    console.error("Confirm UPI Payment Error:", error.message);
+    return res.status(500).json({ message: "Failed to confirm payment" });
   }
 }

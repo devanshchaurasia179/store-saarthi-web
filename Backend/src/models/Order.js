@@ -141,18 +141,11 @@ const orderSchema = new mongoose.Schema(
       default: "",
     },
 
-    /* Razorpay payment fields */
-    razorpayOrderId: {
+    /* UPI payment fields */
+    upiRef: {
       type: String,
       default: null,
-    },
-    razorpayPaymentId: {
-      type: String,
-      default: null,
-    },
-    razorpaySignature: {
-      type: String,
-      default: null,
+      trim: true,
     },
     paymentStatus: {
       type: String,
