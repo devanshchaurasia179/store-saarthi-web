@@ -46,7 +46,7 @@ export function LoginPage() {
       await requestOtp(mobileNumber)
       setStep('otp')
       setResendIn(30)
-      setInfo('OTP sent to your registered email inbox. Valid for 5 minutes.')
+      setInfo('OTP sent to your registered mobile number. Valid for 5 minutes.')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to send OTP')
     } finally {
@@ -107,7 +107,7 @@ export function LoginPage() {
     try {
       await requestOtp(normalizeMobile(mobile))
       setResendIn(30)
-      setInfo('A new OTP was sent to email.')
+      setInfo('A new OTP was sent to your mobile number.')
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Failed to resend OTP')
     } finally {
@@ -208,7 +208,7 @@ export function LoginPage() {
                 setInfo('')
               }}
             >
-              Email OTP
+              Mobile OTP
             </button>
             <button
               type="button"
