@@ -325,19 +325,14 @@ export function LoginPage() {
               </label>
               <label className="auth-form__label">
                 <span className="auth-form__label-text">Secret key</span>
-                <div className="auth-form__input-wrap">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="auth-form__input-icon">
-                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
-                  </svg>
-                  <input
-                    className="auth-form__input auth-form__input--icon"
-                    autoComplete="off"
-                    placeholder="SS-XXXXXXXX"
-                    value={secretKey}
-                    onChange={(e) => setSecretKey(e.target.value.toUpperCase())}
-                    disabled={busy}
-                  />
-                </div>
+                <input
+                  className="auth-form__input"
+                  autoComplete="off"
+                  placeholder="SS-XXXXXXXX"
+                  value={secretKey}
+                  onChange={(e) => setSecretKey(e.target.value.toUpperCase())}
+                  disabled={busy}
+                />
               </label>
               <button type="submit" className="auth-form__submit" disabled={busy}>
                 {busy ? (

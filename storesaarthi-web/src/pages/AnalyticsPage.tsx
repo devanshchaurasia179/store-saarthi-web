@@ -83,7 +83,16 @@ function PinGate({ hasPin, onUnlocked }: PinGateProps) {
       if (hasPin) {
         await verifyAnalyticsPin(pin)
       } else {
-        await setAnalyticsPin(pin)
+        try {
+          await setAnalyticsPin(pin)
+        } catch (setErr) {
+          // Backend says a PIN already exists — fall back to verify
+          if (setErr instanceof ApiError && setErr.message.toLowerCase().includes('already')) {
+            await verifyAnalyticsPin(pin)
+          } else {
+            throw setErr
+          }
+        }
       }
       onUnlocked()
     } catch (err) {
